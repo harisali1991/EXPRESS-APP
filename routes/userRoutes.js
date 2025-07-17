@@ -32,7 +32,7 @@ router.post("/users", (req, res) => {
 //   });
 // });
 
-router.post("/reward", async (req, res) => {
+router.post("/adapter/v1/reward", async (req, res) => {
   const {
     customer_mobile_number,
     mobile_country_code,
