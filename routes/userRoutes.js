@@ -92,7 +92,7 @@ router.post("/adapter/v1/redeem", async (req, res) => {
       try {
         // const member = await passkit_service.GetMemberByExternalID(req.body);
         console.log("MEMBER: ", req.body);
-        // res.status(200).json("updated code");
+        res.status(200).json(req.body);
 
       } catch (error) {
         // res.write(JSON.stringify({ error }));
