@@ -80,6 +80,8 @@ router.post("/redeem", async (req, res) => {
     reward_code
   } = req.body;   
   const body = req.body;
+  console.log("request body: ", req.body);
+  
   const access_token = req.headers["authorization"]; // header keys are lowercase
   if (
     access_token ==
