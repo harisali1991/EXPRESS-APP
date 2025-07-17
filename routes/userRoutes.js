@@ -41,6 +41,7 @@ router.post("/adapter/v1/reward", async (req, res) => {
     branch_id,
   } = req.body;
   const body = req.body;
+  console.log("reward request body: ", req.body);
   const access_token = req.headers["authorization"]; // header keys are lowercase
   if (
     access_token ==
@@ -80,7 +81,7 @@ router.post("/adapter/v1/redeem", async (req, res) => {
     reward_code
   } = req.body;   
   const body = req.body;
-  console.log("request body: ", req.body);
+  console.log("redeem request body: ", req.body);
 
   const access_token = req.headers["authorization"]; // header keys are lowercase
   if (
