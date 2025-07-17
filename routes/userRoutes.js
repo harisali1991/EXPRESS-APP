@@ -67,7 +67,7 @@ router.post("/reward", async (req, res) => {
 });
 
 
-router.post("/redeem", async (req, res) => {
+router.post("/adapter/v1/redeem", async (req, res) => {
   const {
     branch_id,
     business_reference,
@@ -81,7 +81,7 @@ router.post("/redeem", async (req, res) => {
   } = req.body;   
   const body = req.body;
   console.log("request body: ", req.body);
-  
+
   const access_token = req.headers["authorization"]; // header keys are lowercase
   if (
     access_token ==
@@ -91,9 +91,8 @@ router.post("/redeem", async (req, res) => {
       // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
         // const member = await passkit_service.GetMemberByExternalID(req.body);
-        // console.log("MEMBER: ", member);
-        // close
-        res.status(200).json("updated code");
+        console.log("MEMBER: ", member);
+        // res.status(200).json("updated code");
 
       } catch (error) {
         // res.write(JSON.stringify({ error }));
