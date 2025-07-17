@@ -47,7 +47,7 @@ router.post("/reward", async (req, res) => {
     "Bearer lHJ9VTXKc48flDAvcm+gGHi37mIPzZGcEDwJ2OPtcacYyaUDsZu+Or7UQJr8QRe+AKzrZc6EZjR+bg4YK8Fq7g=="
   ) {
     if (req.body.reward_code) {
-      console.log(`inside if check with reward code ${body.reward_code}`);
+      // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
         const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
@@ -69,12 +69,16 @@ router.post("/reward", async (req, res) => {
 
 router.post("/redeem", async (req, res) => {
   const {
-    customer_mobile_number,
-    mobile_country_code,
-    reward_code,
-    business_reference,
     branch_id,
-  } = req.body;
+    business_reference,
+    discount_amount,
+    mobile_country_code,
+    customer_mobile_number,
+    date,
+    user_id,
+    order_id,
+    reward_code
+  } = req.body;   
   const body = req.body;
   const access_token = req.headers["authorization"]; // header keys are lowercase
   if (
@@ -82,11 +86,12 @@ router.post("/redeem", async (req, res) => {
     "Bearer lHJ9VTXKc48flDAvcm+gGHi37mIPzZGcEDwJ2OPtcacYyaUDsZu+Or7UQJr8QRe+AKzrZc6EZjR+bg4YK8Fq7g=="
   ) {
     if (req.body.reward_code) {
-      console.log(`inside if check with reward code ${body.reward_code}`);
+      // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
-        const member = await passkit_service.GetMemberByExternalID(req.body);
+        // const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
-        res.status(200).json(member);
+
+        res.status(200).json("updated code");
       } catch (error) {
         // res.write(JSON.stringify({ error }));
         res.status(500).json({
