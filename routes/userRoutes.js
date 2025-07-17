@@ -90,8 +90,9 @@ router.post("/redeem", async (req, res) => {
       try {
         // const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
-
+        // close
         res.status(200).json("updated code");
+
       } catch (error) {
         // res.write(JSON.stringify({ error }));
         res.status(500).json({
