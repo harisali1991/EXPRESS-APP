@@ -20,4 +20,16 @@ router.post('/users', (req, res) => {
   });
 });
 
+// GET /users/list
+router.get('/list', (req, res) => {
+  const query = 'SELECT * FROM users'; // make sure table name is lowercase if that's how it's created
+
+  connection.query(query, (err, results) => {
+    if (err) return res.status(500).send('DB query error');
+    
+    res.status(200).json(results); // ✅ Return results as JSON
+  });
+});
+
+
 module.exports = router;
