@@ -52,6 +52,7 @@ router.post("/adapter/v1/reward", async (req, res) => {
       try {
         const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
+        console.log("reward response body: ", member);
         res.status(200).json(member);
       } catch (error) {
         // res.write(JSON.stringify({ error }));
