@@ -91,7 +91,7 @@ router.post("/adapter/v1/redeem", async (req, res) => {
       // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
         // const member = await passkit_service.GetMemberByExternalID(req.body);
-        console.log("MEMBER: ", member);
+        console.log("MEMBER: ", req.body);
         // res.status(200).json("updated code");
 
       } catch (error) {
