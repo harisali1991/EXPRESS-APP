@@ -19,7 +19,7 @@ connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``, (err) => {
     `;
 
     const createCustomerQuery = `
-      CREATE TABLE IF NOT EXISTS Customers (
+      CREATE TABLE IF NOT EXISTS customers (
         tid INT AUTO_INCREMENT PRIMARY KEY,
         id VARCHAR(255),
         membership VARCHAR(255),
@@ -44,7 +44,7 @@ connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``, (err) => {
       )
     `;
     const createLoyaltyTransactionQuery = `
-      CREATE TABLE IF NOT EXISTS LoyaltyTransactions (
+      CREATE TABLE IF NOT EXISTS loyaltytransactions (
         tid INT AUTO_INCREMENT PRIMARY KEY,
         customer_id VARCHAR(255),
         order_id VARCHAR(255),
@@ -59,7 +59,7 @@ connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``, (err) => {
       )
     `;
     const createOrderTableQuery = `
-      CREATE TABLE IF NOT EXISTS Orders (
+      CREATE TABLE IF NOT EXISTS orders (
         tid bigint AUTO_INCREMENT PRIMARY KEY,
         id VARCHAR(255),
         branch_id VARCHAR(255),

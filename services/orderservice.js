@@ -79,9 +79,9 @@ async function AwardPointsForOrder(order) {
     if (loyaltyBalance <= 0) return 0;
 
     await queryAsync(
-      `INSERT INTO LoyaltyTransactions 
+      `INSERT INTO loyaltytransactions 
          (created_at, customer_id, description, expire_at, order_id, points, status, type,expired) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         getFormattedDateTime(),
         order.customer?.id || "",
