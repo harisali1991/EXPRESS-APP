@@ -15,7 +15,7 @@ function GetByCustomerPhone(customer_mobile_number) {
       return reject(new Error("Customer mobile number is required"));
     }
 
-    const query = "SELECT * FROM Customers WHERE phone = ?";
+    const query = "SELECT * FROM customers WHERE phone = ?";
     connection.query(query, [customer_mobile_number], (err, results) => {
       if (err) return reject(err);
       resolve(results);
