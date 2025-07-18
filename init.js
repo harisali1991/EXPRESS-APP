@@ -53,7 +53,7 @@ connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``, (err) => {
         description VARCHAR(255),
         created_at DATETIME,
         expire_at DATETIME,
-        status VARCAR(255),
+        status VARCHAR(255),
         expired Boolean,
         redeem_amount double(18,2)
       )
