@@ -4,6 +4,7 @@ const mysql = require("mysql2");
 const connection = require("../db");
 const passkit_service = require("../services/passkit");
 const customer_service = require("../services/customerservice");
+const order_service = require("../services/orderservice.js");
 
 const dbName = process.env.DB_NAME;
 
@@ -17,11 +18,25 @@ connection.changeUser({ database: dbName }, (err) => {
 //   const query = "INSERT INTO users (name, email) VALUES (?, ?)";
 
 //   connection.query(query, [name, email], (err, results) => {
-//     if (err) return res.status(500).send("DB insert error");
+//     if (err) return res.status(500).send("DB  insert error");
 //     res.status(201).json({ id: results.insertId, name, email });
 //   });
 // });
+router.post("/order/callback", async (req, res) => {
+  const body = req.body;
+  // console.log("reward request body: ", req.body);
+  const response = await order_service.upsertOrders(body);
+  await order_service.AwardPointsForOrder(body.order);
+  console.log("order.total_price", body.order.total_price);
+  const customer = body.order.customer.name.split("-");
+  const membership = customer[1]?.trim();
+  const loyaltyBalance = Math.floor(body.order.total_price) / 20;
 
+  // currently it is done on zoho catalyst
+  //await passkit_service.UpdateMemberByExternalID(membership,loyaltyBalance);
+
+  res.status(200).json(response);
+});
 router.post("/adapter/v1/reward", async (req, res) => {
   const {
     customer_mobile_number,
@@ -67,8 +82,8 @@ router.post("/adapter/v1/redeem", async (req, res) => {
     date,
     user_id,
     order_id,
-    reward_code
-  } = req.body;   
+    reward_code,
+  } = req.body;
   const body = req.body;
   console.log("redeem request body: ", req.body);
 
@@ -80,11 +95,14 @@ router.post("/adapter/v1/redeem", async (req, res) => {
     if (req.body.reward_code) {
       // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
-        const passKitResponse = await passkit_service.GetMemberByExternalIDForRedeem(body);
+        const passKitResponse =
+          await passkit_service.GetMemberByExternalIDForRedeem(body);
         if (body.discount_amount > passKitResponse.discount_amount) {
-          res.status(400).json({message: "insufficient points"});
+          res.status(400).json({ message: "insufficient points" });
         }
-        const customer = await customer_service.GetByCustomerPhone(body.customer_mobile_number);
+        const customer = await customer_service.GetByCustomerPhone(
+          body.customer_mobile_number
+        );
         console.log("customer respose: ", customer);
 
         const reward_code = await customer_service.RedeemPointsForCustomer(
@@ -92,17 +110,17 @@ router.post("/adapter/v1/redeem", async (req, res) => {
           customer[0].loyalty_balance,
           body.discount_amount
         );
-        const newBalance = passKitResponse.discount_amount - body.discount_amount;
+        const newBalance =
+          passKitResponse.discount_amount - body.discount_amount;
         // console.log("NEW BALANCE: ", newBalance);
         const setPoint = {
           externalId: passKitResponse.externalId,
           points: newBalance || 0,
           programId: passKitResponse.programId,
-          resetPoints: (newBalance == 0) ? true : false,
+          resetPoints: newBalance == 0 ? true : false,
         };
         await passkit_service.SetPoints(setPoint);
         res.status(200).json(customer);
-
       } catch (error) {
         // res.write(JSON.stringify({ error }));
         res.status(500).json({
@@ -116,7 +134,5 @@ router.post("/adapter/v1/redeem", async (req, res) => {
     res.status(401).json({ status: false, message: "invalid access_token" });
   }
 });
-
-
 
 module.exports = router;

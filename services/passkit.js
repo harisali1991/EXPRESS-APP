@@ -33,10 +33,32 @@ async function GetMemberByExternalID(rewardObj) {
         throw error;
     }
 }
-async function GetMemberByExternalIDForRedeem(rewardObj) {
-	// console.log("inside getmemberbyexternalid", rewardObj);
-    const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${rewardObj.reward_code}`;
+
+async function UpdateMemberByExternalID(externalId, balance) {
+	// console.log("inside GetMemberByExternalID", {externalId,balance});
+    const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${externalId}`;
     // console.log("request url", url);
+    try {
+        const response = await axios.get(url, {
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+        const points = response.data.points || 0;
+        const newBalance = points + balance;
+        const setPoint = {
+          externalId: response.data.externalId,     
+          points: newBalance || 0,
+          programId: response.data.programId,
+          resetPoints: (newBalance == 0) ? true : false,
+        };
+        await SetPoints(setPoint);
+
+    } catch (error) {
+        console.error('Error fetching member by external ID:', error);
+        throw error;
+    }
+}
+async function GetMemberByExternalIDForRedeem(rewardObj) {
+    const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${rewardObj.reward_code}`;
     try {
         const response = await axios.get(url, {
             headers: { Authorization: `Bearer ${access_token}` }
@@ -80,5 +102,6 @@ async function SetPoints(pointsObj) {
 module.exports = {
     GetMemberByExternalID,
     GetMemberByExternalIDForRedeem,
+    UpdateMemberByExternalID,
     SetPoints
 };

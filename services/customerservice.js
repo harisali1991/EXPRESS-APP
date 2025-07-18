@@ -98,6 +98,7 @@ function getFormattedDateTime() {
 
   return `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
 }
+
 function BalanceToPoint(points) {
   return points * 20;
 }
