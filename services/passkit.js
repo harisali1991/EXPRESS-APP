@@ -18,10 +18,11 @@ async function GetMemberByExternalID(rewardObj) {
             discount_amount: response.data.points || 0,
             is_percent: false,
             require_otp: false,
-            customer_mobile_number: response.data.person.mobileNumber || "",
+            // customer_mobile_number: response.data.person.mobileNumber || "",
+            customer_mobile_number: rewardObj.customer_mobile_number || "",
             mobile_country_code: rewardObj.mobile_country_code || "+965",
             reward_code: response.data.externalId,
-            business_reference: "494675",
+            business_reference: rewardObj.business_reference,
             max_discount_amount: response.data.points || 0,
             discount_includes_modifiers: false,
             allowed_products: null,
@@ -32,7 +33,52 @@ async function GetMemberByExternalID(rewardObj) {
         throw error;
     }
 }
-
+async function GetMemberByExternalIDForRedeem(rewardObj) {
+	// console.log("inside getmemberbyexternalid", rewardObj);
+    const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${rewardObj.reward_code}`;
+    // console.log("request url", url);
+    try {
+        const response = await axios.get(url, {
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+        return {
+            type: 1,
+            discount_amount: response.data.points || 0,
+            is_percent: false,
+            require_otp: false,
+            customer_mobile_number: rewardObj.customer_mobile_number || "",
+            mobile_country_code: rewardObj.mobile_country_code || "+965",
+            reward_code: response.data.externalId,
+            business_reference: rewardObj.business_reference,
+            max_discount_amount: response.data.points || 0,
+            discount_includes_modifiers: false,
+            allowed_products: null,
+            is_discount_taxable: false,
+            externalId: response.data.externalId,
+            programId: response.data.programId
+        };
+    } catch (error) {
+        console.error('Error fetching member by external ID:', error);
+        throw error;
+    }
+}
+async function SetPoints(pointsObj) {
+	console.log("inside setpoints function:", pointsObj);
+    const url = `${baseUrl}members/member/points/set`;
+    // console.log("request url", url);
+    try {
+        const response = await axios.put(url, pointsObj,{
+            headers: { Authorization: `Bearer ${access_token}` }
+        });
+        // console.log("response", response.data);
+        console.log("wallet update successful:", response.data);
+    } catch (error) {
+        console.error("wallet update error:", error);
+        throw error;
+    }
+}
 module.exports = {
     GetMemberByExternalID,
+    GetMemberByExternalIDForRedeem,
+    SetPoints
 };

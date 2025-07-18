@@ -3,6 +3,7 @@ const router = express.Router();
 const mysql = require("mysql2");
 const connection = require("../db");
 const passkit_service = require("../services/passkit");
+const customer_service = require("../services/customerservice");
 
 const dbName = process.env.DB_NAME;
 
@@ -11,24 +12,13 @@ connection.changeUser({ database: dbName }, (err) => {
 });
 
 // POST /users
-router.post("/users", (req, res) => {
-  const { name, email } = req.body;
-  const query = "INSERT INTO users (name, email) VALUES (?, ?)";
+// router.post("/users", (req, res) => {
+//   const { name, email } = req.body;
+//   const query = "INSERT INTO users (name, email) VALUES (?, ?)";
 
-  connection.query(query, [name, email], (err, results) => {
-    if (err) return res.status(500).send("DB insert error");
-    res.status(201).json({ id: results.insertId, name, email });
-  });
-});
-
-// // GET /users/list
-// router.get("/list", (req, res) => {
-//   const query = "SELECT * FROM users"; // make sure table name is lowercase if that's how it's created
-
-//   connection.query(query, (err, results) => {
-//     if (err) return res.status(500).send("DB query error");
-
-//     res.status(200).json(results); // ✅ Return results as JSON
+//   connection.query(query, [name, email], (err, results) => {
+//     if (err) return res.status(500).send("DB insert error");
+//     res.status(201).json({ id: results.insertId, name, email });
 //   });
 // });
 
@@ -48,7 +38,6 @@ router.post("/adapter/v1/reward", async (req, res) => {
     "Bearer lHJ9VTXKc48flDAvcm+gGHi37mIPzZGcEDwJ2OPtcacYyaUDsZu+Or7UQJr8QRe+AKzrZc6EZjR+bg4YK8Fq7g=="
   ) {
     if (req.body.reward_code) {
-      // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
         const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
@@ -67,7 +56,6 @@ router.post("/adapter/v1/reward", async (req, res) => {
     res.status(401).json({ status: false, message: "invalid access_token" });
   }
 });
-
 
 router.post("/adapter/v1/redeem", async (req, res) => {
   const {
@@ -92,9 +80,28 @@ router.post("/adapter/v1/redeem", async (req, res) => {
     if (req.body.reward_code) {
       // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
-        // const member = await passkit_service.GetMemberByExternalID(req.body);
-        console.log("MEMBER: ", req.body);
-        res.status(200).json(req.body);
+        const passKitResponse = await passkit_service.GetMemberByExternalIDForRedeem(body);
+        if (body.discount_amount > passKitResponse.discount_amount) {
+          res.status(400).json({message: "insufficient points"});
+        }
+        const customer = await customer_service.GetByCustomerPhone(body.customer_mobile_number);
+        console.log("customer respose: ", customer);
+
+        const reward_code = await customer_service.RedeemPointsForCustomer(
+          customer[0].id,
+          customer[0].loyalty_balance,
+          body.discount_amount
+        );
+        const newBalance = passKitResponse.discount_amount - body.discount_amount;
+        // console.log("NEW BALANCE: ", newBalance);
+        const setPoint = {
+          externalId: passKitResponse.externalId,
+          points: newBalance || 0,
+          programId: passKitResponse.programId,
+          resetPoints: (newBalance == 0) ? true : false,
+        };
+        await passkit_service.SetPoints(setPoint);
+        res.status(200).json(customer);
 
       } catch (error) {
         // res.write(JSON.stringify({ error }));
