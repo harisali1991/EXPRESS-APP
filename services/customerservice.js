@@ -22,13 +22,31 @@ function GetByCustomerPhone(customer_mobile_number) {
     });
   });
 }
-async function RedeemPointsForCustomer(customer_id, current_balance, pointsToRedeem) {
-  try {
-    const now = getFormattedDateTime();
+async function UpdateCustomer(customer, loyalty_balance) {
+  console.log(`inside UpdateCustomer function ${customer.id}, ${loyalty_balance}`);
+  const incrementAmount = Number(loyalty_balance);
 
+  try {
+    await queryAsync(`UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`, [
+      incrementAmount,
+      customer.id,
+    ]);
+  } catch (err) {
+    console.log("Error in UpdateCustomer", err.message);
+  }
+}
+async function RedeemPointsForCustomer(
+  customer_id,
+  current_balance,
+  pointsToRedeem
+) {
+  try {
+    // console.log(`inside RedeemPointsForCustomer function ${customer_id}, ${current_balance}, ${pointsToRedeem}`);
+    const now = getFormattedDateTime();
+    console.log("NOW: ", now);
     // Step 1: Get available earned points
     const earnedPoints = await queryAsync(
-      `SELECT * FROM LoyaltyTransactions 
+      `SELECT * FROM loyaltytransactions 
        WHERE customer_id = ? 
          AND type = 'Earn' 
          AND (status = 'Unused' OR status = 'Partial') 
@@ -60,7 +78,7 @@ async function RedeemPointsForCustomer(customer_id, current_balance, pointsToRed
 
     // Step 2: Record the redemption
     await queryAsync(
-      `INSERT INTO LoyaltyTransactions 
+      `INSERT INTO loyaltytransactions 
          (customer_id, points, type, status, description, created_at) 
        VALUES (?, ?, 'Redeem', 'Used', ?, ?)`,
       [
@@ -73,10 +91,10 @@ async function RedeemPointsForCustomer(customer_id, current_balance, pointsToRed
 
     // Step 3: Update customer balance
     const newBalance = current_balance - pointsToRedeem;
-    await queryAsync(
-      `UPDATE Customers SET loyalty_balance = ? WHERE id = ?`,
-      [newBalance, customer_id]
-    );
+    await queryAsync(`UPDATE customers SET loyalty_balance = ? WHERE id = ?`, [
+      newBalance,
+      customer_id,
+    ]);
 
     return customer_id;
   } catch (error) {
@@ -84,7 +102,6 @@ async function RedeemPointsForCustomer(customer_id, current_balance, pointsToRed
     return `Error: ${error.message}`;
   }
 }
-
 
 function getFormattedDateTime() {
   const now = new Date();
@@ -106,4 +123,5 @@ function BalanceToPoint(points) {
 module.exports = {
   GetByCustomerPhone,
   RedeemPointsForCustomer,
+  UpdateCustomer,
 };

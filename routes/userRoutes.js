@@ -27,14 +27,16 @@ router.post("/order/callback", async (req, res) => {
   // console.log("reward request body: ", req.body);
   const response = await order_service.upsertOrders(body);
   await order_service.AwardPointsForOrder(body.order);
-  console.log("order.total_price", body.order.total_price);
+  
+  // console.log("order.total_price", body.order.total_price);
+  
   const customer = body.order.customer.name.split("-");
   const membership = customer[1]?.trim();
   const loyaltyBalance = Math.floor(body.order.total_price) / 20;
 
   // currently it is done on zoho catalyst
-  //await passkit_service.UpdateMemberByExternalID(membership,loyaltyBalance);
-
+  await passkit_service.UpdateMemberByExternalID(membership,loyaltyBalance);
+  await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
   res.status(200).json(response);
 });
 router.post("/adapter/v1/reward", async (req, res) => {
@@ -73,17 +75,6 @@ router.post("/adapter/v1/reward", async (req, res) => {
 });
 
 router.post("/adapter/v1/redeem", async (req, res) => {
-  const {
-    branch_id,
-    business_reference,
-    discount_amount,
-    mobile_country_code,
-    customer_mobile_number,
-    date,
-    user_id,
-    order_id,
-    reward_code,
-  } = req.body;
   const body = req.body;
   console.log("redeem request body: ", req.body);
 

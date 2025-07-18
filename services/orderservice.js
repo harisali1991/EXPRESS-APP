@@ -80,8 +80,8 @@ async function AwardPointsForOrder(order) {
 
     await queryAsync(
       `INSERT INTO LoyaltyTransactions 
-         (created_at, customer_id, description, expire_at, order_id, points, status, type) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (created_at, customer_id, description, expire_at, order_id, points, status, type,expired) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)`,
       [
         getFormattedDateTime(),
         order.customer?.id || "",
@@ -90,7 +90,8 @@ async function AwardPointsForOrder(order) {
         order.id,
         loyaltyBalance,
         "Unused",
-        "Earn"
+        "Earn",
+        false
       ]
     );
   } catch (err) {

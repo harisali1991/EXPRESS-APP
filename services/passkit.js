@@ -85,7 +85,7 @@ async function GetMemberByExternalIDForRedeem(rewardObj) {
     }
 }
 async function SetPoints(pointsObj) {
-	console.log("inside setpoints function:", pointsObj);
+	// console.log("inside setpoints function:", pointsObj);
     const url = `${baseUrl}members/member/points/set`;
     // console.log("request url", url);
     try {
@@ -93,7 +93,7 @@ async function SetPoints(pointsObj) {
             headers: { Authorization: `Bearer ${access_token}` }
         });
         // console.log("response", response.data);
-        console.log("wallet update successful:", response.data);
+        // console.log("wallet update successful:", response.data);
     } catch (error) {
         console.error("wallet update error:", error);
         throw error;
