@@ -25,15 +25,40 @@ function GetByCustomerPhone(customer_mobile_number) {
 async function UpdateCustomer(customer, loyalty_balance) {
   console.log(`inside UpdateCustomer function ${customer.id}, ${loyalty_balance}`);
   const incrementAmount = Number(loyalty_balance);
-
   try {
-    await queryAsync(`UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`, [
-      incrementAmount,
-      customer.id,
-    ]);
+    // Step 1: Check if customer exists
+    const rows = await queryAsync(
+      `SELECT id FROM customers WHERE id = ?`,
+      [customer.id]
+    );
+
+    if (rows.length > 0) {
+      // Step 2a: Customer exists — update balance
+      await queryAsync(
+        `UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`,
+        [incrementAmount, customer.id]
+      );
+    } else {
+      const foodics_customer = customer.name.split("-");
+      const membership = foodics_customer[1]?.trim();
+      const name = foodics_customer[0]?.trim();
+      // Step 2b: Customer does not exist — insert new row
+      await queryAsync(
+        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance) VALUES (?, ?, ?, ?, ?, ?)`,
+        [customer.id, membership, name, customer.phone, customer.email, incrementAmount]
+      );
+    }
   } catch (err) {
-    console.log("Error in UpdateCustomer", err.message);
+    console.log("Error in UpsertCustomer", err.message);
   }
+  // try {
+  //   await queryAsync(`UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`, [
+  //     incrementAmount,
+  //     customer.id,
+  //   ]);
+  // } catch (err) {
+  //   console.log("Error in UpdateCustomer", err.message);
+  // }
 }
 async function RedeemPointsForCustomer(
   customer_id,
