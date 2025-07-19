@@ -6,11 +6,11 @@ const passkit_service = require("../services/passkit");
 const customer_service = require("../services/customerservice");
 const order_service = require("../services/orderservice.js");
 
-const dbName = process.env.DB_NAME;
+// const dbName = process.env.DB_NAME;
 
-connection.changeUser({ database: dbName }, (err) => {
-  if (err) throw err;
-});
+// connection.changeUser({ database: dbName }, (err) => {
+//   if (err) throw err;
+// });
 
 router.post("/order/callback", async (req, res) => {
   const body = req.body;
@@ -29,6 +29,7 @@ router.post("/order/callback", async (req, res) => {
   await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
   res.status(200).json(response);
 });
+
 router.post("/adapter/v1/reward", async (req, res) => {
   const {
     customer_mobile_number,
@@ -38,7 +39,7 @@ router.post("/adapter/v1/reward", async (req, res) => {
     branch_id,
   } = req.body;
   const body = req.body;
-  console.log("reward request body: ", req.body);
+  // console.log("reward request body: ", req.body);
   const access_token = req.headers["authorization"]; // header keys are lowercase
   if (
     access_token ==
@@ -48,7 +49,7 @@ router.post("/adapter/v1/reward", async (req, res) => {
       try {
         const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
-        console.log("reward response body: ", member);
+        // console.log("reward response body: ", member);
         res.status(200).json(member);
       } catch (error) {
         // res.write(JSON.stringify({ error }));
@@ -84,10 +85,11 @@ router.post("/adapter/v1/redeem", async (req, res) => {
         const customer = await customer_service.GetByCustomerPhone(
           body.customer_mobile_number
         );
-        console.log("customer respose: ", customer);
+        // console.log("customer respose: ", customer);
 
         const reward_code = await customer_service.RedeemPointsForCustomer(
           customer[0].id,
+          body.order_id,
           customer[0].loyalty_balance,
           body.discount_amount
         );
@@ -100,6 +102,7 @@ router.post("/adapter/v1/redeem", async (req, res) => {
           programId: passKitResponse.programId,
           resetPoints: newBalance == 0 ? true : false,
         };
+        // console.log("set point request:", setPoint);
         await passkit_service.SetPoints(setPoint);
         res.status(200).json(customer);
       } catch (error) {

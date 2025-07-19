@@ -1,49 +1,59 @@
 const connection = require("../db");
 
-function queryAsync(query, values = []) {
-  return new Promise((resolve, reject) => {
-    connection.query(query, values, (err, results) => {
-      if (err) return reject(err);
-      resolve(results);
-    });
-  });
-}
+// function queryAsync(query, values = []) {
+//   return new Promise((resolve, reject) => {
+//     connection.query(query, values, (err, results) => {
+//       if (err) return reject(err);
+//       resolve(results);
+//     });
+//   });
+// }
 
-function GetByCustomerPhone(customer_mobile_number) {
-  return new Promise((resolve, reject) => {
-    if (!customer_mobile_number) {
-      return reject(new Error("Customer mobile number is required"));
-    }
+// function GetByCustomerPhone(customer_mobile_number) {
+//   return new Promise((resolve, reject) => {
+//     if (!customer_mobile_number) {
+//       return reject(new Error("Customer mobile number is required"));
+//     }
 
-    const query = "SELECT * FROM customers WHERE phone = ?";
-    connection.query(query, [customer_mobile_number], (err, results) => {
-      if (err) return reject(err);
-      resolve(results);
-    });
-  });
+//     const query = "SELECT * FROM customers WHERE phone = ?";
+//     connection.query(query, [customer_mobile_number], (err, results) => {
+//       if (err) return reject(err);
+//       resolve(results);
+//     });
+//   });
+// }
+async function GetByCustomerPhone(customer_mobile_number) {
+  if (!customer_mobile_number) {
+    throw new Error("Customer mobile number is required");
+  }
+
+  const query = "SELECT * FROM customers WHERE phone = ?";
+  const [rows] = await connection.query(query, [customer_mobile_number]);
+  return rows;
 }
 async function UpdateCustomer(customer, loyalty_balance) {
-  console.log(`inside UpdateCustomer function ${customer.id}, ${loyalty_balance}`);
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
-    const rows = await queryAsync(
+    const [rows] = await connection.query(
       `SELECT id FROM customers WHERE id = ?`,
       [customer.id]
     );
-
     if (rows.length > 0) {
+      
       // Step 2a: Customer exists — update balance
-      await queryAsync(
+      await connection.query(
         `UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`,
         [incrementAmount, customer.id]
       );
     } else {
+      
       const foodics_customer = customer.name.split("-");
       const membership = foodics_customer[1]?.trim();
       const name = foodics_customer[0]?.trim();
+      
       // Step 2b: Customer does not exist — insert new row
-      await queryAsync(
+      await connection.query(
         `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance) VALUES (?, ?, ?, ?, ?, ?)`,
         [customer.id, membership, name, customer.phone, customer.email, incrementAmount]
       );
@@ -51,17 +61,10 @@ async function UpdateCustomer(customer, loyalty_balance) {
   } catch (err) {
     console.log("Error in UpsertCustomer", err.message);
   }
-  // try {
-  //   await queryAsync(`UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`, [
-  //     incrementAmount,
-  //     customer.id,
-  //   ]);
-  // } catch (err) {
-  //   console.log("Error in UpdateCustomer", err.message);
-  // }
 }
 async function RedeemPointsForCustomer(
   customer_id,
+  order_id,
   current_balance,
   pointsToRedeem
 ) {
@@ -70,7 +73,7 @@ async function RedeemPointsForCustomer(
     const now = getFormattedDateTime();
     console.log("NOW: ", now);
     // Step 1: Get available earned points
-    const earnedPoints = await queryAsync(
+    const [earnedPoints] = await connection.query(
       `SELECT * FROM loyaltytransactions 
        WHERE customer_id = ? 
          AND type = 'Earn' 
@@ -81,9 +84,10 @@ async function RedeemPointsForCustomer(
       [customer_id, now]
     );
 
-    console.log("Earned points:", earnedPoints);
+    // console.log("Earned points:", earnedPoints);
 
     let remaining = pointsToRedeem;
+    let totalRedeemed = 0;
 
     for (const point of earnedPoints) {
       const available = point.points - (point.redeem_amount || 0);
@@ -92,22 +96,31 @@ async function RedeemPointsForCustomer(
       const toRedeem = Math.min(available, remaining);
       const newRedeemAmount = (point.redeem_amount || 0) + toRedeem;
       const newStatus = newRedeemAmount === point.points ? "Used" : "Partial";
+      
+      // Update the original Earn record
+      await connection.query(
+        `UPDATE loyaltytransactions SET redeem_amount = ?, status = ? WHERE tid = ?`,
+        [newRedeemAmount, newStatus, point.tid]
+      );
 
       remaining -= toRedeem;
+      totalRedeemed += toRedeem;
       if (remaining <= 0) break;
     }
-
+    
     if (remaining > 0) {
       return "Not enough points to redeem.";
     }
-
+    console.log(`${customer_id}, ${pointsToRedeem}, ${now}`);
+      
     // Step 2: Record the redemption
-    await queryAsync(
+    await connection.query(
       `INSERT INTO loyaltytransactions 
-         (customer_id, points, type, status, description, created_at) 
-       VALUES (?, ?, 'Redeem', 'Used', ?, ?)`,
+         (customer_id, order_id, points, type, status, description, created_at) 
+       VALUES (?, ?, ?, 'Redeem', 'Used', ?, ?)`,
       [
         customer_id,
+        order_id,
         -pointsToRedeem,
         `Redeemed ${pointsToRedeem} points on ${now}`,
         now,
@@ -116,7 +129,7 @@ async function RedeemPointsForCustomer(
 
     // Step 3: Update customer balance
     const newBalance = current_balance - pointsToRedeem;
-    await queryAsync(`UPDATE customers SET loyalty_balance = ? WHERE id = ?`, [
+    await connection.query(`UPDATE customers SET loyalty_balance = ? WHERE id = ?`, [
       newBalance,
       customer_id,
     ]);
