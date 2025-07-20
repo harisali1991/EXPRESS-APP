@@ -81,7 +81,7 @@ async function upsertOrders(body) {
     
     if (body.event == "customer.order.updated") {
       await connection.query(
-        `UPDATE Orders SET status = ? WHERE id = ?`,
+        `UPDATE orders SET status = ? WHERE id = ?`,
         [order.status, order.id]
       );
       updated++;
