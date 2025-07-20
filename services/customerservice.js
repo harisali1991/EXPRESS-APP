@@ -62,6 +62,36 @@ async function UpdateCustomer(customer, loyalty_balance) {
     console.log("Error in UpsertCustomer", err.message);
   }
 }
+async function RevertCustomerLoyaltyBalance(customer, loyalty_balance) {
+  const decrementAmount = Number(loyalty_balance);
+
+  try {
+    // Step 1: Ensure customer exists
+    const [rows] = await connection.query(
+      `SELECT id, loyalty_balance FROM customers WHERE id = ?`,
+      [customer.id]
+    );
+
+    if (rows.length === 0) {
+      console.log("Customer not found for revert.");
+      return;
+    }
+
+    const currentBalance = rows[0].loyalty_balance;
+    const newBalance = currentBalance - decrementAmount;
+
+    // Step 2: Update with the reverted balance
+    await connection.query(
+      `UPDATE customers SET loyalty_balance = ? WHERE id = ?`,
+      [newBalance, customer.id]
+    );
+
+    console.log(`Reverted ${decrementAmount} from customer ${customer.id}, new balance: ${newBalance}`);
+  } catch (err) {
+    console.error("Error in RevertCustomerLoyaltyBalance:", err.message);
+  }
+}
+
 async function RedeemPointsForCustomer(
   customer_id,
   order_id,
@@ -139,7 +169,7 @@ async function RedeemPointsForCustomer(
     console.error("Redemption Error:", error.message);
     return `Error: ${error.message}`;
   }
-}
+}    
 
 function getFormattedDateTime() {
   const now = new Date();
@@ -162,4 +192,5 @@ module.exports = {
   GetByCustomerPhone,
   RedeemPointsForCustomer,
   UpdateCustomer,
+  RevertCustomerLoyaltyBalance
 };

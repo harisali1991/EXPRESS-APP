@@ -138,33 +138,96 @@ async function upsertOrders(body) {
   }
 }
 
-async function AwardPointsForOrder(order) {
+// async function AwardPointsForOrder(order) {
   
+//   try {
+//     const loyaltyBalance = Math.floor(order.total_price) / 20;
+//     if (loyaltyBalance <= 0) return 0;
+
+//     await connection.query(
+//       `INSERT INTO loyaltytransactions 
+//          (created_at, customer_id, description, expire_at, order_id, points, status, type,expired) 
+//        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//       [
+//         getFormattedDateTime(),
+//         order.customer?.id || "",
+//         `Earned from Order# ${order.reference}`,
+//         getExpiryFormattedDateTime(),
+//         order.id,
+//         loyaltyBalance,
+//         "Unused",
+//         "Earn",
+//         false
+//       ]
+//     );
+//   } catch (err) {
+//     console.error("Loyalty calculation failed:", err.message);
+//     return 0;
+//   }
+// }
+async function AwardPointsForOrder(order, isReturn = false) {
   try {
     const loyaltyBalance = Math.floor(order.total_price) / 20;
     if (loyaltyBalance <= 0) return 0;
 
-    await connection.query(
-      `INSERT INTO loyaltytransactions 
-         (created_at, customer_id, description, expire_at, order_id, points, status, type,expired) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        getFormattedDateTime(),
-        order.customer?.id || "",
-        `Earned from Order# ${order.reference}`,
-        getExpiryFormattedDateTime(),
-        order.id,
-        loyaltyBalance,
-        "Unused",
-        "Earn",
-        false
-      ]
+    // Check if a loyalty transaction for this order already exists
+    const [existing] = await connection.query(
+      `SELECT * FROM loyaltytransactions WHERE order_id = ? AND type = 'Earn'`,
+      [order.id]
     );
+
+    if (existing.length === 0 && !isReturn) {
+      console.log("insert statement for transaction")
+      // ✅ First time awarding points for this order
+      await connection.query(
+        `INSERT INTO loyaltytransactions 
+           (created_at, customer_id, description, expire_at, order_id, points, status, type, expired) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          getFormattedDateTime(),
+          order.customer?.id || "",
+          `Earned from Order# ${order.reference}`,
+          getExpiryFormattedDateTime(),
+          order.id,
+          loyaltyBalance,
+          "Unused",
+          "Earn",
+          false
+        ]
+      );
+    } else if (existing.length > 0 && isReturn) {
+      // ❌ Order is being returned, reverse points
+      await connection.query(
+        `INSERT INTO loyaltytransactions 
+           (created_at, customer_id, description, expire_at, order_id, points, status, type, expired) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          getFormattedDateTime(),
+          order.customer?.id || "",
+          `Reversed points for returned Order# ${order.reference}`,
+          getExpiryFormattedDateTime(),
+          order.id,
+          -loyaltyBalance,
+          "Used",
+          "Adjustment", // or "Reversal"
+          false
+        ]
+      );
+
+      // Optionally, mark original Earn as expired or reversed
+      await connection.query(
+        `UPDATE loyaltytransactions SET status = 'Reversed', expired = true WHERE order_id = ? AND type = 'Earn'`,
+        [order.id]
+      );
+    }
+
+    return loyaltyBalance;
   } catch (err) {
     console.error("Loyalty calculation failed:", err.message);
     return 0;
   }
 }
+
 function getFormattedDateTime() {
   const now = new Date();
   now.setHours(now.getHours() + 3);

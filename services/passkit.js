@@ -35,9 +35,7 @@ async function GetMemberByExternalID(rewardObj) {
 }
 
 async function UpdateMemberByExternalID(externalId, balance) {
-	// console.log("inside GetMemberByExternalID", {externalId,balance});
     const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${externalId}`;
-    // console.log("request url", url);
     try {
         const response = await axios.get(url, {
             headers: { Authorization: `Bearer ${access_token}` }
@@ -57,6 +55,30 @@ async function UpdateMemberByExternalID(externalId, balance) {
         throw error;
     }
 }
+async function RevertUpdateMemberByExternalID(externalId, balance) {
+  const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${externalId}`;
+  try {
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
+
+    const currentPoints = response.data.points || 0;
+    const revertedBalance = currentPoints - balance;
+
+    const setPoint = {
+      externalId: response.data.externalId,
+      points: revertedBalance < 0 ? 0 : revertedBalance,
+      programId: response.data.programId,
+      resetPoints: revertedBalance <= 0,
+    };
+
+    await SetPoints(setPoint);
+  } catch (error) {
+    console.error('Error reverting member points by external ID:', error);
+    throw error;
+  }
+}
+
 async function GetMemberByExternalIDForRedeem(rewardObj) {
     const url = `${baseUrl}members/member/externalId/3jjEmzl4YLE3019VgKRyGZ/${rewardObj.reward_code}`;
     try {
@@ -103,5 +125,6 @@ module.exports = {
     GetMemberByExternalID,
     GetMemberByExternalIDForRedeem,
     UpdateMemberByExternalID,
+    RevertUpdateMemberByExternalID,
     SetPoints
 };

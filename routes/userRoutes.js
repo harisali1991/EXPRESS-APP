@@ -14,19 +14,29 @@ const order_service = require("../services/orderservice.js");
 
 router.post("/order/callback", async (req, res) => {
   const body = req.body;
-  // console.log("reward request body: ", req.body);
+
+  if (body.order.status != 4 && body.order.status != 5) {
+    return res.status(200).json({ message: "order is not done yet" });
+  }
+
   const response = await order_service.upsertOrders(body);
-  await order_service.AwardPointsForOrder(body.order);
-  
-  // console.log("order.total_price", body.order.total_price);
-  
   const customer = body.order.customer.name.split("-");
   const membership = customer[1]?.trim();
   const loyaltyBalance = Math.floor(body.order.total_price) / 20;
+  if (response.inserted > 0) {
+    await order_service.AwardPointsForOrder(body.order, false);
 
-  // currently it is done on zoho catalyst
-  await passkit_service.UpdateMemberByExternalID(membership,loyaltyBalance);
-  await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
+    
+    await passkit_service.UpdateMemberByExternalID(membership, loyaltyBalance);
+    await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
+  } else {
+    if (body.order.status == 5) {
+
+      await order_service.AwardPointsForOrder(body.order, true);
+      await passkit_service.RevertUpdateMemberByExternalID(membership, loyaltyBalance);
+      await customer_service.RevertCustomerLoyaltyBalance(body.order.customer, loyaltyBalance);
+    }
+  }
   res.status(200).json(response);
 });
 
@@ -80,7 +90,7 @@ router.post("/adapter/v1/redeem", async (req, res) => {
         const passKitResponse =
           await passkit_service.GetMemberByExternalIDForRedeem(body);
         if (body.discount_amount > passKitResponse.discount_amount) {
-          res.status(400).json({ message: "insufficient points" });
+          return res.status(400).json({ message: "insufficient points" });
         }
         const customer = await customer_service.GetByCustomerPhone(
           body.customer_mobile_number
