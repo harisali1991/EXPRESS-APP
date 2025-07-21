@@ -97,14 +97,15 @@ router.post("/adapter/v1/redeem", async (req, res) => {
           return res.status(400).json({ message: "insufficient points" });
         }
         const customer = await customer_service.GetByCustomerPhone(
-          body.customer_mobile_number
+          body.customer_mobile_number,
+          passKitResponse.discount_amount
         );
-        // console.log("customer respose: ", customer);
+        console.log("customer respose: ", customer);
 
         const reward_code = await customer_service.RedeemPointsForCustomer(
-          customer[0].id,
+          customer.id,
           body.order_id,
-          customer[0].loyalty_balance,
+          customer.loyalty_balance,
           body.discount_amount
         );
         const newBalance =

@@ -115,7 +115,7 @@ async function SetPoints(pointsObj) {
             headers: { Authorization: `Bearer ${access_token}` }
         });
         // console.log("response", response.data);
-        // console.log("wallet update successful:", response.data);
+        console.log("wallet update successful:", response.data);
     } catch (error) {
         console.error("wallet update error:", error);
         throw error;

@@ -1,37 +1,51 @@
 const connection = require("../db");
+const axios = require("axios");
+require('dotenv').config();
 
-// function queryAsync(query, values = []) {
-//   return new Promise((resolve, reject) => {
-//     connection.query(query, values, (err, results) => {
-//       if (err) return reject(err);
-//       resolve(results);
-//     });
-//   });
-// }
-
-// function GetByCustomerPhone(customer_mobile_number) {
-//   return new Promise((resolve, reject) => {
-//     if (!customer_mobile_number) {
-//       return reject(new Error("Customer mobile number is required"));
-//     }
-
-//     const query = "SELECT * FROM customers WHERE phone = ?";
-//     connection.query(query, [customer_mobile_number], (err, results) => {
-//       if (err) return reject(err);
-//       resolve(results);
-//     });
-//   });
-// }
-async function GetByCustomerPhone(customer_mobile_number) {
+async function GetByCustomerPhone(customer_mobile_number, discount_amount) {
   if (!customer_mobile_number) {
     throw new Error("Customer mobile number is required");
   }
 
   const query = "SELECT * FROM customers WHERE phone = ?";
   const [rows] = await connection.query(query, [customer_mobile_number]);
-  return rows;
+  if (rows.length === 0) {
+    // No customer found, fetch from Foodics
+    console.log("Customer not found in DB. Fetching from Foodics...");
+    const foodicsCustomer = await fetchFoodicsCustomers(customer_mobile_number);
+    // console.log(foodicsCustomer);
+    if (foodicsCustomer) {
+      // Optionally: Save the customer to your database here
+      await UpdateCustomer(foodicsCustomer,discount_amount);
+    }
+    foodicsCustomer.loyalty_balance = discount_amount;
+    return foodicsCustomer;
+  }
+  return rows[0];
 }
+async function fetchFoodicsCustomers(phone)
+{
+    let config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: `${process.env.BASEURL}/customers?filter[phone]=` + phone,
+      headers: { 
+        'Authorization': `Bearer ${process.env.ACCESS_TOKEN}`, 
+        'Accept': 'application/json', 
+        'Content-Type': 'application/json'
+      }
+    };
+
+    const response = await axios.request(config);
+    const foodics_customer = response.data?.data?.[0];
+
+    // console.log("foodics_customer:", foodics_customer);
+    return foodics_customer || null;
+}
+
 async function UpdateCustomer(customer, loyalty_balance) {
+  console.log("inside update or insert customer function", loyalty_balance);
+  
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
@@ -51,7 +65,7 @@ async function UpdateCustomer(customer, loyalty_balance) {
       const foodics_customer = customer.name.split("-");
       const membership = foodics_customer[1]?.trim();
       const name = foodics_customer[0]?.trim();
-      
+      console.log("upadating balance", incrementAmount);
       // Step 2b: Customer does not exist — insert new row
       await connection.query(
         `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -101,7 +115,6 @@ async function RedeemPointsForCustomer(
   try {
     // console.log(`inside RedeemPointsForCustomer function ${customer_id}, ${current_balance}, ${pointsToRedeem}`);
     const now = getFormattedDateTime();
-    console.log("NOW: ", now);
     // Step 1: Get available earned points
     const [earnedPoints] = await connection.query(
       `SELECT * FROM loyaltytransactions 
