@@ -102,7 +102,7 @@ async function GetMemberByExternalIDForRedeem(rewardObj) {
             programId: response.data.programId
         };
     } catch (error) {
-        console.error('Error fetching member by external ID:', error);
+        console.error('Error fetching member by external ID:', error?.message);
         throw error;
     }
 }

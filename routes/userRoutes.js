@@ -119,8 +119,8 @@ router.post("/adapter/v1/redeem", async (req, res) => {
         // res.write(JSON.stringify({ error }));
         res.status(500).json({
           message: error?.message,
-          response: error?.response?.data,
-          status: error?.response?.status,
+          // response: error?.response?.data,
+          // status: error?.response?.status,
         });
       }
     }
