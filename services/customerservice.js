@@ -10,38 +10,17 @@ async function GetByCustomerPhone(customer_mobile_number, discount_amount) {
   const query = "SELECT * FROM customers WHERE phone = ?";
   const [rows] = await connection.query(query, [customer_mobile_number]);
   if (rows.length === 0) {
-    // No customer found, fetch from Foodics
-    console.log("Customer not found in DB. Fetching from Foodics...");
     const foodicsCustomer = await fetchFoodicsCustomers(customer_mobile_number);
-    // console.log(foodicsCustomer);
+    foodicsCustomer.loyalty_balance = discount_amount;
     if (foodicsCustomer) {
-      // Optionally: Save the customer to your database here
+      await AddOpeningTransaction(foodicsCustomer);
       await UpdateCustomer(foodicsCustomer,discount_amount);
     }
-    foodicsCustomer.loyalty_balance = discount_amount;
     return foodicsCustomer;
   }
   return rows[0];
 }
-async function fetchFoodicsCustomers(phone)
-{
-    let config = {
-      method: 'get',
-      maxBodyLength: Infinity,
-      url: `${process.env.BASEURL}/customers?filter[phone]=` + phone,
-      headers: { 
-        'Authorization': `Bearer ${process.env.ACCESS_TOKEN}`, 
-        'Accept': 'application/json', 
-        'Content-Type': 'application/json'
-      }
-    };
 
-    const response = await axios.request(config);
-    const foodics_customer = response.data?.data?.[0];
-
-    // console.log("foodics_customer:", foodics_customer);
-    return foodics_customer || null;
-}
 
 async function UpdateCustomer(customer, loyalty_balance) {
   console.log("inside update or insert customer function", loyalty_balance);
@@ -105,7 +84,6 @@ async function RevertCustomerLoyaltyBalance(customer, loyalty_balance) {
     console.error("Error in RevertCustomerLoyaltyBalance:", err.message);
   }
 }
-
 async function RedeemPointsForCustomer(
   customer_id,
   order_id,
@@ -183,7 +161,39 @@ async function RedeemPointsForCustomer(
     return `Error: ${error.message}`;
   }
 }    
+async function AddOpeningTransaction(customer){
+    console.log("Opeing Balance: " + customer.id + " : " + customer.loyalty_balance);
+    const now = getFormattedDateTime();
+    await connection.query(
+      `INSERT INTO loyaltytransactions 
+         (customer_id, points, type, status, description, created_at) 
+       VALUES (?, ?, 'Earn', 'Unused', ?, ?)`,
+      [
+        customer.id,
+        customer.loyalty_balance,
+        `Opening balance ${customer.loyalty_balance} points on ${now}`,
+        now,
+      ]
+    );
+}
+async function fetchFoodicsCustomers(phone)
+{
+    let config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: `${process.env.BASEURL}/customers?filter[phone]=` + phone,
+      headers: { 
+        'Authorization': `Bearer ${process.env.ACCESS_TOKEN}`, 
+        'Accept': 'application/json', 
+        'Content-Type': 'application/json'
+      }
+    };
+    const response = await axios.request(config);
+    const foodics_customer = response.data?.data?.[0];
 
+    // console.log("foodics_customer:", foodics_customer);
+    return foodics_customer || null;
+}
 function getFormattedDateTime() {
   const now = new Date();
   now.setHours(now.getHours() + 3);
@@ -195,10 +205,6 @@ function getFormattedDateTime() {
   const ss = String(now.getSeconds()).padStart(2, "0");
 
   return `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
-}
-
-function BalanceToPoint(points) {
-  return points * 20;
 }
 
 module.exports = {
