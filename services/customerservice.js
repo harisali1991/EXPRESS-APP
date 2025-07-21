@@ -91,7 +91,7 @@ async function RedeemPointsForCustomer(
   pointsToRedeem
 ) {
   try {
-    // console.log(`inside RedeemPointsForCustomer function ${customer_id}, ${current_balance}, ${pointsToRedeem}`);
+    console.log(`inside RedeemPointsForCustomer function ${customer_id}, ${current_balance}, ${pointsToRedeem}`);
     const now = getFormattedDateTime();
     // Step 1: Get available earned points
     const [earnedPoints] = await connection.query(
@@ -104,13 +104,14 @@ async function RedeemPointsForCustomer(
        ORDER BY created_at ASC`,
       [customer_id, now]
     );
-
     // console.log("Earned points:", earnedPoints);
 
     let remaining = pointsToRedeem;
     let totalRedeemed = 0;
 
     for (const point of earnedPoints) {
+      // console.log("inside loop");
+      
       const available = point.points - (point.redeem_amount || 0);
       if (available <= 0) continue;
 
@@ -162,17 +163,19 @@ async function RedeemPointsForCustomer(
   }
 }    
 async function AddOpeningTransaction(customer){
-    console.log("Opeing Balance: " + customer.id + " : " + customer.loyalty_balance);
+    // console.log("Opeing Balance: " + customer.id + " : " + customer.loyalty_balance);
     const now = getFormattedDateTime();
     await connection.query(
       `INSERT INTO loyaltytransactions 
-         (customer_id, points, type, status, description, created_at) 
-       VALUES (?, ?, 'Earn', 'Unused', ?, ?)`,
+         (customer_id, points, type, status, description, created_at, expire_at, expired) 
+       VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
       [
         customer.id,
         customer.loyalty_balance,
         `Opening balance ${customer.loyalty_balance} points on ${now}`,
         now,
+        getExpiryFormattedDateTime(),
+        false
       ]
     );
 }
@@ -196,6 +199,19 @@ async function fetchFoodicsCustomers(phone)
 }
 function getFormattedDateTime() {
   const now = new Date();
+  now.setHours(now.getHours() + 3);
+  const yyyy = now.getFullYear();
+  const MM = String(now.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+  const dd = String(now.getDate()).padStart(2, "0");
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+
+  return `${yyyy}-${MM}-${dd} ${hh}:${mm}:${ss}`;
+}
+function getExpiryFormattedDateTime() {
+  const now = new Date();
+  now.setFullYear(now.getFullYear() + 1);
   now.setHours(now.getHours() + 3);
   const yyyy = now.getFullYear();
   const MM = String(now.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
