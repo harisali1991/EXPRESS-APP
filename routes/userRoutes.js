@@ -15,6 +15,9 @@ const order_service = require("../services/orderservice.js");
 router.post("/order/callback", async (req, res) => {
   const body = req.body;
 
+  if (!body.customer.is_loyalty_enabled) {
+    return res.status(200).json({ message: "loyalty not enabled" });
+  }
   if (body.order.status != 4 && body.order.status != 5) {
     return res.status(200).json({ message: "order is not done yet" });
   }
