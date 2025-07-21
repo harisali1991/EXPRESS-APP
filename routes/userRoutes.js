@@ -16,6 +16,7 @@ router.post("/order/callback", async (req, res) => {
   const body = req.body;
 
   if (!body.order.customer.is_loyalty_enabled) {
+    console.log(`order# ${body.order.reference}, customer# ${body.order.customer.name}, loyalty not enabled`);
     return res.status(200).json({ message: "loyalty not enabled" });
   }
   if (body.order.status != 4 && body.order.status != 5) {
