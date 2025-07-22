@@ -29,7 +29,6 @@ router.post("/order/callback", async (req, res) => {
   const loyaltyBalance = Math.floor(body.order.total_price) / 20;
   if (response.inserted > 0) {
     await order_service.AwardPointsForOrder(body.order, false);
-
     
     await passkit_service.UpdateMemberByExternalID(membership, loyaltyBalance);
     await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
@@ -117,7 +116,7 @@ router.post("/adapter/v1/redeem", async (req, res) => {
           programId: passKitResponse.programId,
           resetPoints: newBalance == 0 ? true : false,
         };
-        // console.log("set point request:", setPoint);
+        console.log("set point request:", setPoint);
         await passkit_service.SetPoints(setPoint);
         res.status(200).json(customer);
       } catch (error) {

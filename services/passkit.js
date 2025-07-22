@@ -45,6 +45,7 @@ async function UpdateMemberByExternalID(externalId, balance) {
         const setPoint = {
           externalId: response.data.externalId,     
           points: newBalance || 0,
+          tierPoints: response.data.tierPoints + balance,
           programId: response.data.programId,
           resetPoints: (newBalance == 0) ? true : false,
         };
@@ -107,14 +108,11 @@ async function GetMemberByExternalIDForRedeem(rewardObj) {
     }
 }
 async function SetPoints(pointsObj) {
-	// console.log("inside setpoints function:", pointsObj);
     const url = `${baseUrl}members/member/points/set`;
-    // console.log("request url", url);
     try {
         const response = await axios.put(url, pointsObj,{
             headers: { Authorization: `Bearer ${access_token}` }
         });
-        // console.log("response", response.data);
         console.log("wallet update successful:", response.data);
     } catch (error) {
         console.error("wallet update error:", error);
