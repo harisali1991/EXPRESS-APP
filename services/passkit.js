@@ -23,7 +23,7 @@ async function CheckMemberByExternalID(membership) {
             is_discount_taxable: false
         };
     } catch (error) {
-        console.error('Error fetching member by external ID:', error.message);
+        // console.error('Error fetching member by external ID:', error.message);
         return null;
     }
 }

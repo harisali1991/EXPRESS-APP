@@ -28,7 +28,7 @@ router.post("/order/callback", async (req, res) => {
   if (!member) {
     return res.status(200).json({ message: "wallet not exist" });
   }
-  console.log("members: " + member);
+  // console.log("members: " + member);
 
   if (body.order.status != 4 && body.order.status != 5) {
     return res.status(200).json({ message: "order is not done yet" });
@@ -55,6 +55,7 @@ router.post("/order/callback", async (req, res) => {
     }
   }
   res.status(200).json(response);
+  // res.status(200).json({message: "order callback"});
 });
 
 router.post("/adapter/v1/reward", async (req, res) => {
