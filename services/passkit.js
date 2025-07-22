@@ -45,7 +45,7 @@ async function UpdateMemberByExternalID(externalId, balance) {
         const setPoint = {
           externalId: response.data.externalId,     
           points: newBalance || 0,
-          tierPoints: parseInt(response.data.tierPoints + balance),
+          tierPoints: parseInt(newBalance),
           programId: response.data.programId,
           resetPoints: (newBalance == 0) ? true : false,
         };
