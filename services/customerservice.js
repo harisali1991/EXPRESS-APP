@@ -1,6 +1,18 @@
 const connection = require("../db");
 const axios = require("axios");
-require('dotenv').config();
+require("dotenv").config();
+
+async function GetByCustomer(customer_mobile_number) {
+  if (!customer_mobile_number) {
+    throw new Error("Customer mobile number is required");
+  }
+  const query = "SELECT * FROM customers WHERE phone = ?";
+  const [rows] = await connection.query(query, [customer_mobile_number]);
+  if (rows.length === 0) {
+    return null;
+  }
+  return rows[0];
+}
 
 async function GetByCustomerPhone(customer_mobile_number, discount_amount) {
   if (!customer_mobile_number) {
@@ -14,17 +26,41 @@ async function GetByCustomerPhone(customer_mobile_number, discount_amount) {
     foodicsCustomer.loyalty_balance = discount_amount;
     if (foodicsCustomer) {
       await AddOpeningTransaction(foodicsCustomer);
-      await UpdateCustomer(foodicsCustomer,discount_amount);
+      await UpdateCustomer(foodicsCustomer, discount_amount);
     }
     return foodicsCustomer;
   }
   return rows[0];
 }
+async function UpdateCustomerWalletId(customer_id, wallet_id, balance) {
+  await connection.query(`UPDATE customers SET wallet_id = ? WHERE id = ?`, [
+    wallet_id,
+    customer_id,
+  ]);
+  const now = getFormattedDateTime();
+      await connection.query(
+        `INSERT INTO loyaltytransactions 
+         (customer_id, points, type, status, description, created_at, expire_at, expired) 
+       VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
+        [
+          customer_id,
+          balance,
+          `Opening balance ${balance} points on ${now}`,
+          now,
+          getExpiryFormattedDateTime(),
+          false,
+        ]
+      );
+  return true;
+}
 
-
-async function UpdateCustomer(customer, loyalty_balance) {
+async function UpdateCustomer(
+  customer,
+  loyalty_balance,
+  passkit_balance,
+  wallet_id
+) {
   console.log("inside update or insert customer function", loyalty_balance);
-  
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
@@ -33,22 +69,44 @@ async function UpdateCustomer(customer, loyalty_balance) {
       [customer.id]
     );
     if (rows.length > 0) {
-      
       // Step 2a: Customer exists — update balance
       await connection.query(
         `UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`,
         [incrementAmount, customer.id]
       );
     } else {
-      
+      const newBalance = passkit_balance + incrementAmount;
       const foodics_customer = customer.name.split("-");
       const membership = foodics_customer[1]?.trim();
       const name = foodics_customer[0]?.trim();
-      console.log("upadating balance", incrementAmount);
+      console.log("upadating balance", passkit_balance);
       // Step 2b: Customer does not exist — insert new row
       await connection.query(
-        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance) VALUES (?, ?, ?, ?, ?, ?)`,
-        [customer.id, membership, name, customer.phone, customer.email, incrementAmount]
+        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          customer.id,
+          membership,
+          name,
+          customer.phone,
+          customer.email,
+          newBalance,
+          wallet_id,
+        ]
+      );
+
+      const now = getFormattedDateTime();
+      await connection.query(
+        `INSERT INTO loyaltytransactions 
+         (customer_id, points, type, status, description, created_at, expire_at, expired) 
+       VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
+        [
+          customer.id,
+          passkit_balance,
+          `Opening balance ${passkit_balance} points on ${now}`,
+          now,
+          getExpiryFormattedDateTime(),
+          false,
+        ]
       );
     }
   } catch (err) {
@@ -79,7 +137,9 @@ async function RevertCustomerLoyaltyBalance(customer, loyalty_balance) {
       [newBalance, customer.id]
     );
 
-    console.log(`Reverted ${decrementAmount} from customer ${customer.id}, new balance: ${newBalance}`);
+    console.log(
+      `Reverted ${decrementAmount} from customer ${customer.id}, new balance: ${newBalance}`
+    );
   } catch (err) {
     console.error("Error in RevertCustomerLoyaltyBalance:", err.message);
   }
@@ -91,7 +151,9 @@ async function RedeemPointsForCustomer(
   pointsToRedeem
 ) {
   try {
-    console.log(`inside RedeemPointsForCustomer function ${customer_id}, ${current_balance}, ${pointsToRedeem}`);
+    console.log(
+      `inside RedeemPointsForCustomer function ${customer_id}, ${current_balance}, ${pointsToRedeem}`
+    );
     const now = getFormattedDateTime();
     // Step 1: Get available earned points
     const [earnedPoints] = await connection.query(
@@ -111,14 +173,14 @@ async function RedeemPointsForCustomer(
 
     for (const point of earnedPoints) {
       // console.log("inside loop");
-      
+
       const available = point.points - (point.redeem_amount || 0);
       if (available <= 0) continue;
 
       const toRedeem = Math.min(available, remaining);
       const newRedeemAmount = (point.redeem_amount || 0) + toRedeem;
       const newStatus = newRedeemAmount === point.points ? "Used" : "Partial";
-      
+
       // Update the original Earn record
       await connection.query(
         `UPDATE loyaltytransactions SET redeem_amount = ?, status = ? WHERE tid = ?`,
@@ -129,12 +191,12 @@ async function RedeemPointsForCustomer(
       totalRedeemed += toRedeem;
       if (remaining <= 0) break;
     }
-    
+
     if (remaining > 0) {
       return "Not enough points to redeem.";
     }
     console.log(`${customer_id}, ${pointsToRedeem}, ${now}`);
-      
+
     // Step 2: Record the redemption
     await connection.query(
       `INSERT INTO loyaltytransactions 
@@ -151,51 +213,66 @@ async function RedeemPointsForCustomer(
 
     // Step 3: Update customer balance
     const newBalance = current_balance - pointsToRedeem;
-    await connection.query(`UPDATE customers SET loyalty_balance = ? WHERE id = ?`, [
-      newBalance,
-      customer_id,
-    ]);
+    await connection.query(
+      `UPDATE customers SET loyalty_balance = ? WHERE id = ?`,
+      [newBalance, customer_id]
+    );
 
     return customer_id;
   } catch (error) {
     console.error("Redemption Error:", error.message);
     return `Error: ${error.message}`;
   }
-}    
-async function AddOpeningTransaction(customer){
-    // console.log("Opeing Balance: " + customer.id + " : " + customer.loyalty_balance);
-    const now = getFormattedDateTime();
-    await connection.query(
-      `INSERT INTO loyaltytransactions 
+}
+async function AddOpeningTransaction(customer) {
+  // console.log("Opeing Balance: " + customer.id + " : " + customer.loyalty_balance);
+  const now = getFormattedDateTime();
+  await connection.query(
+    `INSERT INTO loyaltytransactions 
          (customer_id, points, type, status, description, created_at, expire_at, expired) 
        VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
-      [
-        customer.id,
-        customer.loyalty_balance,
-        `Opening balance ${customer.loyalty_balance} points on ${now}`,
-        now,
-        getExpiryFormattedDateTime(),
-        false
-      ]
-    );
+    [
+      customer.id,
+      customer.loyalty_balance,
+      `Opening balance ${customer.loyalty_balance} points on ${now}`,
+      now,
+      getExpiryFormattedDateTime(),
+      false,
+    ]
+  );
 }
-async function fetchFoodicsCustomers(phone)
-{
-    let config = {
-      method: 'get',
-      maxBodyLength: Infinity,
-      url: `${process.env.BASEURL}/customers?filter[phone]=` + phone,
-      headers: { 
-        'Authorization': `Bearer ${process.env.ACCESS_TOKEN}`, 
-        'Accept': 'application/json', 
-        'Content-Type': 'application/json'
-      }
-    };
-    const response = await axios.request(config);
-    const foodics_customer = response.data?.data?.[0];
+async function AddOpeningTransactionV2(customer, member) {
+  const now = getFormattedDateTime();
+  await connection.query(
+    `INSERT INTO loyaltytransactions 
+         (customer_id, points, type, status, description, created_at, expire_at, expired) 
+       VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
+    [
+      customer.id,
+      member.discount_amount,
+      `Opening balance ${member.discount_amount} points on ${now}`,
+      now,
+      getExpiryFormattedDateTime(),
+      false,
+    ]
+  );
+}
+async function fetchFoodicsCustomers(phone) {
+  let config = {
+    method: "get",
+    maxBodyLength: Infinity,
+    url: `${process.env.BASEURL}/customers?filter[phone]=` + phone,
+    headers: {
+      Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  };
+  const response = await axios.request(config);
+  const foodics_customer = response.data?.data?.[0];
 
-    // console.log("foodics_customer:", foodics_customer);
-    return foodics_customer || null;
+  // console.log("foodics_customer:", foodics_customer);
+  return foodics_customer || null;
 }
 function getFormattedDateTime() {
   const now = new Date();
@@ -224,8 +301,12 @@ function getExpiryFormattedDateTime() {
 }
 
 module.exports = {
+  GetByCustomer,
+  UpdateCustomerWalletId,
   GetByCustomerPhone,
   RedeemPointsForCustomer,
   UpdateCustomer,
-  RevertCustomerLoyaltyBalance
+  RevertCustomerLoyaltyBalance,
+  AddOpeningTransaction,
+  AddOpeningTransactionV2,
 };

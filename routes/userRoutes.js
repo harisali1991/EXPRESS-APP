@@ -6,41 +6,100 @@ const passkit_service = require("../services/passkit");
 const customer_service = require("../services/customerservice");
 const order_service = require("../services/orderservice.js");
 
-// const dbName = process.env.DB_NAME;
+// router.post("/order/callback", async (req, res) => {
+//   const body = req.body;
 
-// connection.changeUser({ database: dbName }, (err) => {
-//   if (err) throw err;
+//   if (!body.order.customer.is_loyalty_enabled) {
+//     console.log(
+//       `order# ${body.order.reference}, customer# ${body.order.customer.name}, loyalty not enabled`
+//     );
+//     return res.status(200).json({ message: "loyalty not enabled" });
+//   }
+//   const customer = body.order.customer.name.split("-");
+//   const membership = customer[1]?.trim();
+//   const loyaltyBalance = Math.floor(body.order.total_price) / 20;
+//   const member = await passkit_service.CheckMemberByExternalID(membership);
+//   if (!member) {
+//     return res.status(200).json({ message: "wallet not exist" });
+//   }
+//   // console.log("members: " + member);
+
+//   if (body.order.status != 4 && body.order.status != 5) {
+//     return res.status(200).json({ message: "order is not done yet" });
+//   }
+
+//   const response = await order_service.upsertOrders(body);
+
+//   if (response.inserted > 0) {
+//     await order_service.AwardPointsForOrder(body.order, false);
+
+//     await passkit_service.UpdateMemberByExternalID(membership, loyaltyBalance);
+//     await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
+//   } else {
+//     if (body.order.status == 5) {
+//       await order_service.AwardPointsForOrder(body.order, true);
+//       await passkit_service.RevertUpdateMemberByExternalID(
+//         membership,
+//         loyaltyBalance
+//       );
+//       await customer_service.RevertCustomerLoyaltyBalance(
+//         body.order.customer,
+//         loyaltyBalance
+//       );
+//     }
+//   }
+//   res.status(200).json(response);
+//   // res.status(200).json({message: "order callback"});
 // });
 
 router.post("/order/callback", async (req, res) => {
   const body = req.body;
-
-  if (!body.order.customer.is_loyalty_enabled) {
-    console.log(
-      `order# ${body.order.reference}, customer# ${body.order.customer.name}, loyalty not enabled`
-    );
-    return res.status(200).json({ message: "loyalty not enabled" });
-  }
-  const customer = body.order.customer.name.split("-");
+  const order = body.order;
+  const orderCustomer = order.customer;
+  const dbCustomer = await customer_service.GetByCustomer(orderCustomer.phone);
+  const customer = orderCustomer.name.split("-");
   const membership = customer[1]?.trim();
-  const loyaltyBalance = Math.floor(body.order.total_price) / 20;
+  const loyaltyBalance = Math.floor(order.total_price) / 20;
+  let passkit_wallet_id = "";
+  if (dbCustomer != null) {
+    // check if wallet is created or not for brand wallet customers
+    if (!dbCustomer.wallet_id && dbCustomer.is_brandwallet) {
+      const wallet_id = await passkit_service.CreateWallet(dbCustomer);
+      if (wallet_id != null) {
+        passkit_wallet_id = wallet_id;
+        // update database with customer wallet Id
+        await customer_service.UpdateCustomerWalletId(dbCustomer.id, wallet_id, dbCustomer.loyalty_balance);
+      }
+    } else {
+      console.log("wallet already created!");
+    }
+
+    console.log("customer is not null");
+  }
+  
   const member = await passkit_service.CheckMemberByExternalID(membership);
   if (!member) {
     return res.status(200).json({ message: "wallet not exist" });
   }
-  // console.log("members: " + member);
+  passkit_wallet_id = member.id;
 
-  if (body.order.status != 4 && body.order.status != 5) {
+  if (order.status != 4 && order.status != 5) {
     return res.status(200).json({ message: "order is not done yet" });
   }
 
   const response = await order_service.upsertOrders(body);
 
   if (response.inserted > 0) {
-    await order_service.AwardPointsForOrder(body.order, false);
-
+    
     await passkit_service.UpdateMemberByExternalID(membership, loyaltyBalance);
-    await customer_service.UpdateCustomer(body.order.customer, loyaltyBalance);
+    await customer_service.UpdateCustomer(
+      order.customer,
+      loyaltyBalance,
+      member.discount_amount,
+      passkit_wallet_id
+    );
+    await order_service.AwardPointsForOrder(body.order, false);
+    
   } else {
     if (body.order.status == 5) {
       await order_service.AwardPointsForOrder(body.order, true);
@@ -49,13 +108,13 @@ router.post("/order/callback", async (req, res) => {
         loyaltyBalance
       );
       await customer_service.RevertCustomerLoyaltyBalance(
-        body.order.customer,
+        order.customer,
         loyaltyBalance
       );
     }
   }
   res.status(200).json(response);
-  // res.status(200).json({message: "order callback"});
+  // res.status(200).json({ message: "order callback" });
 });
 
 router.post("/adapter/v1/reward", async (req, res) => {
