@@ -58,9 +58,10 @@ async function UpdateCustomer(
   customer,
   loyalty_balance,
   passkit_balance,
-  wallet_id
+  wallet_id,
+  tier_id
 ) {
-  console.log("inside update or insert customer function", loyalty_balance);
+  console.log("inside update or insert customer function", loyalty_balance, tier_id);
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
@@ -71,8 +72,8 @@ async function UpdateCustomer(
     if (rows.length > 0) {
       // Step 2a: Customer exists — update balance
       await connection.query(
-        `UPDATE customers SET loyalty_balance = loyalty_balance + ? WHERE id = ?`,
-        [incrementAmount, customer.id]
+        `UPDATE customers SET loyalty_balance = loyalty_balance + ?, tier_id = ? WHERE id = ?`,
+        [incrementAmount, tier_id, customer.id]
       );
     } else {
       const newBalance = passkit_balance + incrementAmount;
@@ -82,7 +83,7 @@ async function UpdateCustomer(
       console.log("upadating balance", passkit_balance);
       // Step 2b: Customer does not exist — insert new row
       await connection.query(
-        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           customer.id,
           membership,
@@ -91,6 +92,7 @@ async function UpdateCustomer(
           customer.email,
           newBalance,
           wallet_id,
+          tier_id
         ]
       );
 

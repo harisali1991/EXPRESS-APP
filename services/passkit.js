@@ -72,7 +72,7 @@ async function CheckMemberByExternalID(membership) {
       is_percent: false,
       require_otp: false,
       id: response.data.id,
-      // customer_mobile_number: response.data.person.mobileNumber || "",
+      tier_id: response.data.tierId,
       reward_code: response.data.externalId,
       max_discount_amount: response.data.points || 0,
       discount_includes_modifiers: false,

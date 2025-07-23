@@ -1,29 +1,28 @@
 const connection = require("../db");
 
 async function upsertOrders(body) {
-  try{
-
+  try {
     let inserted = 0;
     let updated = 0;
     const order = body.order;
-    
+
     if (body.event == "customer.order.updated") {
-      await connection.query(
-        `UPDATE orders SET status = ? WHERE id = ?`,
-        [order.status, order.id]
-      );
+      await connection.query(`UPDATE orders SET status = ? WHERE id = ?`, [
+        order.status,
+        order.id,
+      ]);
       updated++;
     } else {
       if (
         order.customer.name.includes("TALABAT") ||
         order.customer.name.includes("JAHEZ") ||
         order.customer.name.includes("Vthru")
-    ) {
-      return { inserted, updated };
-    }
-    
-    await connection.query(
-      `INSERT INTO orders (
+      ) {
+        return { inserted, updated };
+      }
+
+      await connection.query(
+        `INSERT INTO orders (
         id, branch_id, branch_name, customer_id, customer_name,
         discount_type, reference_x, number, type, source, status,
         delivery_status, kitchen_notes, business_date, subtotal_price,
@@ -38,31 +37,30 @@ async function upsertOrders(body) {
           order.customer?.id || null,
           order.customer?.name || "",
           order.discount_type,
-        order.reference_x,
-        order.number,
-        order.type,
-        order.source,
-        order.status,
-        order.delivery_status,
-        order.kitchen_notes,
-        order.business_date,
-        order.subtotal_price,
-        order.total_price,
-        order.discount_amount,
-        order.rounding_amount,
-        order.tax_exclusive_discount_amount,
-        order.opened_at,
-        order.closed_at,
-        order.reference,
-        order.check_number,
-      ]
-    );
-    inserted++;
-  }
-  return { inserted, updated };
-  }catch(err){
+          order.reference_x,
+          order.number,
+          order.type,
+          order.source,
+          order.status,
+          order.delivery_status,
+          order.kitchen_notes,
+          order.business_date,
+          order.subtotal_price,
+          order.total_price,
+          order.discount_amount,
+          order.rounding_amount,
+          order.tax_exclusive_discount_amount,
+          order.opened_at,
+          order.closed_at,
+          order.reference,
+          order.check_number,
+        ]
+      );
+      inserted++;
+    }
+    return { inserted, updated };
+  } catch (err) {
     console.log("error message:", err.message);
-    
   }
 }
 
@@ -78,7 +76,7 @@ async function AwardPointsForOrder(order, isReturn = false) {
     );
 
     if (existing.length === 0 && !isReturn) {
-      console.log("insert statement for transaction")
+      console.log("insert statement for transaction");
       // ✅ First time awarding points for this order
       await connection.query(
         `INSERT INTO loyaltytransactions 
@@ -93,7 +91,7 @@ async function AwardPointsForOrder(order, isReturn = false) {
           loyaltyBalance,
           "Unused",
           "Earn",
-          false
+          false,
         ]
       );
     } else if (existing.length > 0 && isReturn) {
@@ -111,7 +109,7 @@ async function AwardPointsForOrder(order, isReturn = false) {
           -loyaltyBalance,
           "Used",
           "Adjustment", // or "Reversal"
-          false
+          false,
         ]
       );
 
@@ -156,5 +154,5 @@ function getExpiryFormattedDateTime() {
 }
 module.exports = {
   upsertOrders,
-  AwardPointsForOrder
+  AwardPointsForOrder,
 };
