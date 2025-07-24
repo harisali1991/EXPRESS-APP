@@ -119,10 +119,11 @@ async function UpdateMemberByExternalID(externalId, balance) {
     });
     const points = response.data.points || 0;
     const newBalance = points + balance;
+    const newTierBalance = parseInt(newBalance) - parseInt(points);
     const setPoint = {
       externalId: response.data.externalId,
       points: newBalance || 0,
-      tierPoints: parseInt(newBalance),
+      tierPoints: response.data.tierPoints + newTierBalance,
       programId: response.data.programId,
       resetPoints: newBalance == 0 ? true : false,
     };
@@ -141,12 +142,13 @@ async function RevertUpdateMemberByExternalID(externalId, balance) {
 
     const currentPoints = response.data.points || 0;
     const revertedBalance = currentPoints - balance;
-
+    const revertTierBalance = parseInt(balance); 
     const setPoint = {
       externalId: response.data.externalId,
       points: revertedBalance < 0 ? 0 : revertedBalance,
       programId: response.data.programId,
       resetPoints: revertedBalance <= 0,
+      tierPoints: parseInt(response.data.tierPoints - revertTierBalance)
     };
 
     await SetPoints(setPoint);

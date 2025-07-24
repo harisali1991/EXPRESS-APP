@@ -146,7 +146,7 @@ async function UpdateCustomer(
       const foodics_customer = customer.name.split("-");
       const membership = foodics_customer[1]?.trim();
       const name = foodics_customer[0]?.trim();
-      console.log("upadating balance", passkit_balance);
+      // console.log("upadating balance", passkit_balance);
       // Step 2b: Customer does not exist — insert new row
       await connection.query(
         `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -161,7 +161,7 @@ async function UpdateCustomer(
           tier_id
         ]
       );
-
+      
       const now = getFormattedDateTime();
       await connection.query(
         `INSERT INTO loyaltytransactions 

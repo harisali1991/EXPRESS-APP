@@ -28,6 +28,11 @@ async function upsertOrders(body) {
     ) {
       return { inserted, updated };
     }
+    if(order.status == 5){
+      inserted = 0;
+      updated = 0;
+      return { inserted, updated };
+    }
 
     await connection.query(
       `INSERT INTO orders (
