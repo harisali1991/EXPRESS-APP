@@ -106,8 +106,9 @@ async function GetMemberByExternalID(rewardObj) {
       is_discount_taxable: false,
     };
   } catch (error) {
-    console.error("Error fetching member by external ID:", error);
-    throw error;
+    console.error("GetMemberByExternalID: Error fetching member by external ID:", rewardObj.reward_code);
+    // throw error;
+    return null;
   }
 }
 async function UpdateMemberByExternalID(externalId, balance) {

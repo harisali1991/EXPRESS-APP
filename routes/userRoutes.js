@@ -29,8 +29,6 @@ router.post("/order/callback", async (req, res) => {
     } else {
       console.log("wallet already created!");
     }
-
-    console.log("customer is not null");
   }
 
   const member = await passkit_service.CheckMemberByExternalID(membership);
@@ -73,13 +71,6 @@ router.post("/order/callback", async (req, res) => {
 });
 
 router.post("/adapter/v1/reward", async (req, res) => {
-  const {
-    customer_mobile_number,
-    mobile_country_code,
-    reward_code,
-    business_reference,
-    branch_id,
-  } = req.body;
   const body = req.body;
   // console.log("reward request body: ", req.body);
   const access_token = req.headers["authorization"]; // header keys are lowercase
@@ -92,10 +83,13 @@ router.post("/adapter/v1/reward", async (req, res) => {
         const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
         // console.log("reward response body: ", member);
-        res.status(200).json(member);
+        if(!member){
+          return res.status(200).json("no record found!");
+        }
+        return res.status(200).json(member);
       } catch (error) {
         // res.write(JSON.stringify({ error }));
-        res.status(500).json({
+        return res.status(500).json({
           message: error?.message,
           response: error?.response?.data,
           status: error?.response?.status,

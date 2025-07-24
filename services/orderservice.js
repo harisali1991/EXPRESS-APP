@@ -7,22 +7,30 @@ async function upsertOrders(body) {
     const order = body.order;
 
     if (body.event == "customer.order.updated") {
-      await connection.query(`UPDATE orders SET status = ? WHERE id = ?`, [
-        order.status,
-        order.id,
-      ]);
-      updated++;
-    } else {
-      if (
-        order.customer.name.includes("TALABAT") ||
-        order.customer.name.includes("JAHEZ") ||
-        order.customer.name.includes("Vthru")
-      ) {
+      // check if order exist before or not
+      const [orderExist] = await connection.query(
+        `select * from orders where id = ?`,
+        [order.id]
+      );
+      if (orderExist.length > 0) {
+        await connection.query(`UPDATE orders SET status = ? WHERE id = ?`, [
+          order.status,
+          order.id,
+        ]);
+        updated++;
         return { inserted, updated };
       }
+    }
+    if (
+      order.customer.name.includes("TALABAT") ||
+      order.customer.name.includes("JAHEZ") ||
+      order.customer.name.includes("Vthru")
+    ) {
+      return { inserted, updated };
+    }
 
-      await connection.query(
-        `INSERT INTO orders (
+    await connection.query(
+      `INSERT INTO orders (
         id, branch_id, branch_name, customer_id, customer_name,
         discount_type, reference_x, number, type, source, status,
         delivery_status, kitchen_notes, business_date, subtotal_price,
@@ -30,34 +38,34 @@ async function upsertOrders(body) {
         tax_exclusive_discount_amount, opened_at, closed_at,
         reference, check_number
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          order.id,
-          order.branch.id,
-          order.branch.name,
-          order.customer?.id || null,
-          order.customer?.name || "",
-          order.discount_type,
-          order.reference_x,
-          order.number,
-          order.type,
-          order.source,
-          order.status,
-          order.delivery_status,
-          order.kitchen_notes,
-          order.business_date,
-          order.subtotal_price,
-          order.total_price,
-          order.discount_amount,
-          order.rounding_amount,
-          order.tax_exclusive_discount_amount,
-          order.opened_at,
-          order.closed_at,
-          order.reference,
-          order.check_number,
-        ]
-      );
-      inserted++;
-    }
+      [
+        order.id,
+        order.branch.id,
+        order.branch.name,
+        order.customer?.id || null,
+        order.customer?.name || "",
+        order.discount_type,
+        order.reference_x,
+        order.number,
+        order.type,
+        order.source,
+        order.status,
+        order.delivery_status,
+        order.kitchen_notes,
+        order.business_date,
+        order.subtotal_price,
+        order.total_price,
+        order.discount_amount,
+        order.rounding_amount,
+        order.tax_exclusive_discount_amount,
+        order.opened_at,
+        order.closed_at,
+        order.reference,
+        order.check_number,
+      ]
+    );
+    inserted++;
+
     return { inserted, updated };
   } catch (err) {
     console.log("error message:", err.message);
