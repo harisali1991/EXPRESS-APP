@@ -1,4 +1,5 @@
 const connection = require("../db");
+const passkit_service = require("./passkit");
 const axios = require("axios");
 require("dotenv").config();
 
@@ -14,21 +15,26 @@ async function GetByCustomer(customer_mobile_number) {
   return rows[0];
 }
 
-async function GetByCustomerPhone(customer_mobile_number, discount_amount) {
+
+async function GetByCustomerPhone(customer_mobile_number, discount_amount, body) {
   if (!customer_mobile_number) {
     throw new Error("Customer mobile number is required");
   }
-
   const query = "SELECT * FROM customers WHERE phone = ?";
   const [rows] = await connection.query(query, [customer_mobile_number]);
   if (rows.length === 0) {
+    console.log("customer not exist is db");
     const foodicsCustomer = await fetchFoodicsCustomers(customer_mobile_number);
-    foodicsCustomer.loyalty_balance = discount_amount;
+    const member = await passkit_service.CheckMemberByExternalID(body.reward_code);
+    //foodicsCustomer.loyalty_balance = discount_amount;
     if (foodicsCustomer) {
-      await AddOpeningTransaction(foodicsCustomer);
-      await UpdateCustomer(foodicsCustomer, discount_amount);
+      const member_customer = { id: foodicsCustomer.id, loyalty_balance: member.discount_amount};
+      await AddOpeningTransaction(member_customer);
+      await UpdateCustomerOpening(foodicsCustomer, member.discount_amount, member.id, member.tier_id);
     }
-    return foodicsCustomer;
+    const selectQuery = "SELECT * FROM customers WHERE phone = ?";
+    const [customerRows] = await connection.query(selectQuery, [customer_mobile_number]);
+    return customerRows[0];
   }
   return rows[0];
 }
@@ -54,6 +60,66 @@ async function UpdateCustomerWalletId(customer_id, wallet_id, balance) {
   return true;
 }
 
+async function UpdateCustomerOpening(
+  customer,
+  loyalty_balance,
+  wallet_id,
+  tier_id
+) {
+  console.log("inside update or insert customer function", loyalty_balance, wallet_id, tier_id);
+  const incrementAmount = Number(loyalty_balance);
+  try {
+    // Step 1: Check if customer exists
+    const [rows] = await connection.query(
+      `SELECT id FROM customers WHERE id = ?`,
+      [customer.id]
+    );
+    if (rows.length > 0) {
+      // Step 2a: Customer exists — update balance
+      await connection.query(
+        `UPDATE customers SET loyalty_balance = loyalty_balance + ?, tier_id = ? WHERE id = ?`,
+        [incrementAmount, tier_id, customer.id]
+      );
+    } else {
+      const newBalance = loyalty_balance;
+      const foodics_customer = customer.name.split("-");
+      const membership = foodics_customer[1]?.trim();
+      const name = foodics_customer[0]?.trim();
+      console.log("updating balance", loyalty_balance);
+      // Step 2b: Customer does not exist — insert new row
+      await connection.query(
+        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          customer.id,
+          membership,
+          name,
+          customer.phone,
+          customer.email,
+          loyalty_balance,
+          wallet_id,
+          tier_id
+        ]
+      );
+
+      // const now = getFormattedDateTime();
+      // await connection.query(
+      //   `INSERT INTO loyaltytransactions 
+      //    (customer_id, points, type, status, description, created_at, expire_at, expired) 
+      //  VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
+      //   [
+      //     customer.id,
+      //     loyalty_balance,
+      //     `Opening balance ${loyalty_balance} points on ${now}`,
+      //     now,
+      //     getExpiryFormattedDateTime(),
+      //     false,
+      //   ]
+      // );
+    }
+  } catch (err) {
+    console.log("Error in UpsertCustomer", err.message);
+  }
+}
 async function UpdateCustomer(
   customer,
   loyalty_balance,
@@ -227,7 +293,6 @@ async function RedeemPointsForCustomer(
   }
 }
 async function AddOpeningTransaction(customer) {
-  // console.log("Opeing Balance: " + customer.id + " : " + customer.loyalty_balance);
   const now = getFormattedDateTime();
   await connection.query(
     `INSERT INTO loyaltytransactions 
@@ -305,9 +370,10 @@ function getExpiryFormattedDateTime() {
 module.exports = {
   GetByCustomer,
   UpdateCustomerWalletId,
+  UpdateCustomer,
   GetByCustomerPhone,
   RedeemPointsForCustomer,
-  UpdateCustomer,
+  UpdateCustomerOpening,
   RevertCustomerLoyaltyBalance,
   AddOpeningTransaction,
   AddOpeningTransactionV2,

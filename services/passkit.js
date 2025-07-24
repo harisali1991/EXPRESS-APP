@@ -179,11 +179,11 @@ async function GetMemberByExternalIDForRedeem(rewardObj) {
     };
   } catch (error) {
     console.error(
-      "Error fetching member by external ID :",
+      "GetMemberByExternalIDForRedeem: Error fetching member by external ID :",
       response.data.externalId,
       error?.message
     );
-    throw error;
+    return null;
   }
 }
 async function SetPoints(pointsObj) {

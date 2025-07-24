@@ -83,7 +83,7 @@ router.post("/adapter/v1/reward", async (req, res) => {
         const member = await passkit_service.GetMemberByExternalID(req.body);
         // console.log("MEMBER: ", member);
         // console.log("reward response body: ", member);
-        if(!member){
+        if (!member) {
           return res.status(200).json("no record found!");
         }
         return res.status(200).json(member);
@@ -118,11 +118,17 @@ router.post("/adapter/v1/redeem", async (req, res) => {
         if (body.discount_amount > passKitResponse.discount_amount) {
           return res.status(400).json({ message: "insufficient points" });
         }
+        if(!passKitResponse){
+          return res.status(404).json({ message: "wallet not exist" });
+        }
+        console.log("reward code : ", body.reward_code);
+        
         const customer = await customer_service.GetByCustomerPhone(
           body.customer_mobile_number,
-          passKitResponse.discount_amount
+          passKitResponse.discount_amount,
+          body
         );
-        console.log("customer respose: ", customer);
+        // console.log("customer respose: ", customer);
 
         const reward_code = await customer_service.RedeemPointsForCustomer(
           customer.id,
