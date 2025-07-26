@@ -66,7 +66,7 @@ async function UpdateCustomerOpening(
   wallet_id,
   tier_id
 ) {
-  console.log("inside update or insert customer function", loyalty_balance, wallet_id, tier_id);
+  console.log("inside UpdateCustomerOpening function", loyalty_balance, wallet_id, tier_id);
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
@@ -127,7 +127,7 @@ async function UpdateCustomer(
   wallet_id,
   tier_id
 ) {
-  console.log("inside update or insert customer function", loyalty_balance, tier_id);
+  console.log("inside UpdateCustomer function", loyalty_balance, tier_id);
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
