@@ -14,6 +14,17 @@ async function GetByCustomer(customer_mobile_number) {
   }
   return rows[0];
 }
+async function GetCustomerByMembership(member) {
+  if (!customer_mobile_number) {
+    throw new Error("Customer mobile number is required");
+  }
+  const query = "SELECT * FROM customers WHERE membershio = ?";
+  const [rows] = await connection.query(query, [member]);
+  if (rows.length === 0) {
+    return null;
+  }
+  return rows[0];
+}
 
 
 async function GetByCustomerPhone(customer_mobile_number, discount_amount, body) {
