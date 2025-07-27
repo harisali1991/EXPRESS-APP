@@ -53,6 +53,7 @@ async function CreateWallet(paramCustomer) {
     // ❌ Error handling
     if (error.response && error.response.data?.error) {
       console.error("Wallet creation failed:", error.response.data.error);
+      console.error("Wallet creation failed for number:", paramCustomer.phone);
     } else {
       console.error("Unexpected error:", error.message);
     }
