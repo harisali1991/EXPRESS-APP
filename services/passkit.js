@@ -7,6 +7,13 @@ const access_token =
 const programId = "3jjEmzl4YLE3019VgKRyGZ";
 
 async function CreateWallet(paramCustomer) {
+  // check if wallet already exist or not
+  const member = await CheckMemberByExternalID(paramCustomer.membership);
+  if(member){
+    await UpdateMemberByExternalID(paramCustomer.membership, paramCustomer.loyalty_balance);
+    console.log("wallet already exist: " + member.id);
+    return member.id;
+  }
   const name = paramCustomer.name.split(" ")[0];
   const data = {
     externalId: paramCustomer.membership,
