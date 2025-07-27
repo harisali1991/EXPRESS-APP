@@ -26,6 +26,9 @@ router.post("/order/callback", async (req, res) => {
           dbCustomer.loyalty_balance
         );
       }
+      else{
+        return res.status(400).json({ message: "wallet already created!" });
+      }
     } else {
       console.log("wallet already created!");
     }
