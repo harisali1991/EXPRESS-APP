@@ -15,7 +15,7 @@ async function GetByCustomer(customer_mobile_number) {
   return rows[0];
 }
 async function GetCustomerByMembership(member) {
-  if (!customer_mobile_number) {
+  if (!member) {
     throw new Error("Customer mobile number is required");
   }
   const query = "SELECT * FROM customers WHERE membership = ?";
