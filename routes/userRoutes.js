@@ -184,7 +184,7 @@ router.post("/adapter/v1/signup", async (req, res) => {
   await customer_service.UpdateCustomerWalletId(
     customer.id,
     body.pass.id,
-    customer.loyaltyBalance
+    customer.loyalty_balance
   );
 });
 
