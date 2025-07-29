@@ -176,8 +176,16 @@ router.post("/adapter/v1/signup", async (req, res) => {
     programId: body.pass.classId,
     resetPoints: customer.loyalty_balance == 0 ? true : false,
   };
+
   console.log("set brandwallet balance:", setPoint);
   await passkit_service.SetPoints(setPoint);
+
+  // update database with customer wallet Id
+  await customer_service.UpdateCustomerWalletId(
+    customer.id,
+    body.pass.id,
+    customer.loyaltyBalance
+  );
 });
 
 module.exports = router;
