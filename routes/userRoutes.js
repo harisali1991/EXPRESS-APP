@@ -25,8 +25,7 @@ router.post("/order/callback", async (req, res) => {
           wallet_id,
           dbCustomer.loyalty_balance
         );
-      }
-      else{
+      } else {
         return res.status(400).json({ message: "wallet already created!" });
       }
     } else {
@@ -121,17 +120,17 @@ router.post("/adapter/v1/redeem", async (req, res) => {
         if (body.discount_amount > passKitResponse.discount_amount) {
           return res.status(400).json({ message: "insufficient points" });
         }
-        if(!passKitResponse){
+        if (!passKitResponse) {
           return res.status(404).json({ message: "wallet not exist" });
         }
         console.log("reward code : ", body.reward_code);
-        
+
         const customer = await customer_service.GetByCustomerPhone(
           body.customer_mobile_number,
           passKitResponse.discount_amount,
           body
         );
-        // console.log("customer respose: ", customer);
+        console.log("customer respose: ", customer);
 
         const reward_code = await customer_service.RedeemPointsForCustomer(
           customer.id,
@@ -163,6 +162,22 @@ router.post("/adapter/v1/redeem", async (req, res) => {
   } else {
     res.status(401).json({ status: false, message: "invalid access_token" });
   }
+});
+
+router.post("/adapter/v1/signup", async (req, res) => {
+  const body = req.body;
+  console.log("new wallet created", req.body);
+  const customer = await customer_service.GetCustomerByMembership(
+    body.pass.externalId
+  );
+  const setPoint = {
+    externalId: body.pass.externalId,
+    points: customer.loyalty_balance || 0,
+    programId: body.pass.classId,
+    resetPoints: customer.loyalty_balance == 0 ? true : false,
+  };
+  console.log("set brandwallet balance:", setPoint);
+  await passkit_service.SetPoints(setPoint);
 });
 
 module.exports = router;

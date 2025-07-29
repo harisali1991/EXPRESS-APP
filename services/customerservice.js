@@ -18,7 +18,7 @@ async function GetCustomerByMembership(member) {
   if (!customer_mobile_number) {
     throw new Error("Customer mobile number is required");
   }
-  const query = "SELECT * FROM customers WHERE membershio = ?";
+  const query = "SELECT * FROM customers WHERE membership = ?";
   const [rows] = await connection.query(query, [member]);
   if (rows.length === 0) {
     return null;
@@ -188,13 +188,13 @@ async function UpdateCustomer(
         ]
       );
     }
-    const [updateCustomer] = await connection.query(
-      `SELECT id, loyalty_balance FROM customers WHERE id = ?`,
-      [customer.id]
-    );
-    console.log("return loyalty balance: ", updateCustomer[0].loyalty_balance);
+    // const [updateCustomer] = await connection.query(
+    //   `SELECT id, loyalty_balance FROM customers WHERE id = ?`,
+    //   [customer.id]
+    // );
+    // console.log("return loyalty balance: ", updateCustomer[0].loyalty_balance);
     
-    return updateCustomer[0].loyalty_balance;
+    // return updateCustomer[0].loyalty_balance;
   } catch (err) {
     console.log("Error in UpsertCustomer", err.message);
   }
@@ -387,6 +387,7 @@ function getExpiryFormattedDateTime() {
 
 module.exports = {
   GetByCustomer,
+  GetCustomerByMembership,
   UpdateCustomerWalletId,
   UpdateCustomer,
   GetByCustomerPhone,
