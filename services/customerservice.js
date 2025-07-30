@@ -77,12 +77,13 @@ async function UpdateCustomerWalletId(
   const now = getFormattedDateTime();
   // 1. Check if opening transaction already exists
   const [rows] = await connection.query(
-    `SELECT id FROM loyaltytransactions 
+    `SELECT customer_id FROM loyaltytransactions 
    WHERE customer_id = ? 
      AND description LIKE 'Opening balance%' 
      AND type = 'Earn'`,
     [customer_id]
   );
+  console.log("row length: ", rows.length);
   if (rows.length === 0) {
     // 2. Insert only if not found
     await connection.query(
