@@ -26,8 +26,11 @@ async function GetCustomerByMembership(member) {
   return rows[0];
 }
 
-
-async function GetByCustomerPhone(customer_mobile_number, discount_amount, body) {
+async function GetByCustomerPhone(
+  customer_mobile_number,
+  discount_amount,
+  body
+) {
   if (!customer_mobile_number) {
     throw new Error("Customer mobile number is required");
   }
@@ -36,38 +39,68 @@ async function GetByCustomerPhone(customer_mobile_number, discount_amount, body)
   if (rows.length === 0) {
     console.log("customer not exist is db");
     const foodicsCustomer = await fetchFoodicsCustomers(customer_mobile_number);
-    const member = await passkit_service.CheckMemberByExternalID(body.reward_code);
+    const member = await passkit_service.CheckMemberByExternalID(
+      body.reward_code
+    );
     //foodicsCustomer.loyalty_balance = discount_amount;
     if (foodicsCustomer) {
-      const member_customer = { id: foodicsCustomer.id, loyalty_balance: member.discount_amount};
+      const member_customer = {
+        id: foodicsCustomer.id,
+        loyalty_balance: member.discount_amount,
+      };
       await AddOpeningTransaction(member_customer);
-      await UpdateCustomerOpening(foodicsCustomer, member.discount_amount, member.id, member.tier_id);
+      await UpdateCustomerOpening(
+        foodicsCustomer,
+        member.discount_amount,
+        member.id,
+        member.tier_id
+      );
     }
     const selectQuery = "SELECT * FROM customers WHERE phone = ?";
-    const [customerRows] = await connection.query(selectQuery, [customer_mobile_number]);
+    const [customerRows] = await connection.query(selectQuery, [
+      customer_mobile_number,
+    ]);
     return customerRows[0];
   }
   return rows[0];
 }
-async function UpdateCustomerWalletId(customer_id, wallet_id, balance) {
+async function UpdateCustomerWalletId(
+  customer_id,
+  wallet_id,
+  balance,
+  tier_id
+) {
   await connection.query(`UPDATE customers SET wallet_id = ? WHERE id = ?`, [
     wallet_id,
     customer_id,
   ]);
   const now = getFormattedDateTime();
-      await connection.query(
-        `INSERT INTO loyaltytransactions 
+  // 1. Check if opening transaction already exists
+  const [rows] = await connection.query(
+    `SELECT id FROM loyaltytransactions 
+   WHERE customer_id = ? 
+     AND description LIKE 'Opening balance%' 
+     AND type = 'Earn'`,
+    [customer.id]
+  );
+  if (rows.length === 0) {
+    // 2. Insert only if not found
+    await connection.query(
+      `INSERT INTO loyaltytransactions 
          (customer_id, points, type, status, description, created_at, expire_at, expired) 
        VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
-        [
-          customer_id,
-          balance,
-          `Opening balance ${balance} points on ${now}`,
-          now,
-          getExpiryFormattedDateTime(),
-          false,
-        ]
-      );
+      [
+        customer_id,
+        balance,
+        `Opening balance ${balance} points on ${now}`,
+        now,
+        getExpiryFormattedDateTime(),
+        false,
+      ]
+    );
+  } else {
+    console.log("Opening balance already exists. Skipping insert.");
+  }
   return true;
 }
 
@@ -77,7 +110,12 @@ async function UpdateCustomerOpening(
   wallet_id,
   tier_id
 ) {
-  console.log("inside UpdateCustomerOpening function", loyalty_balance, wallet_id, tier_id);
+  console.log(
+    "inside UpdateCustomerOpening function",
+    loyalty_balance,
+    wallet_id,
+    tier_id
+  );
   const incrementAmount = Number(loyalty_balance);
   try {
     // Step 1: Check if customer exists
@@ -108,14 +146,14 @@ async function UpdateCustomerOpening(
           customer.email,
           loyalty_balance,
           wallet_id,
-          tier_id
+          tier_id,
         ]
       );
 
       // const now = getFormattedDateTime();
       // await connection.query(
-      //   `INSERT INTO loyaltytransactions 
-      //    (customer_id, points, type, status, description, created_at, expire_at, expired) 
+      //   `INSERT INTO loyaltytransactions
+      //    (customer_id, points, type, status, description, created_at, expire_at, expired)
       //  VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
       //   [
       //     customer.id,
@@ -169,10 +207,10 @@ async function UpdateCustomer(
           customer.email,
           newBalance,
           wallet_id,
-          tier_id
+          tier_id,
         ]
       );
-      
+
       const now = getFormattedDateTime();
       await connection.query(
         `INSERT INTO loyaltytransactions 
@@ -193,7 +231,7 @@ async function UpdateCustomer(
     //   [customer.id]
     // );
     // console.log("return loyalty balance: ", updateCustomer[0].loyalty_balance);
-    
+
     // return updateCustomer[0].loyalty_balance;
   } catch (err) {
     console.log("Error in UpsertCustomer", err.message);
