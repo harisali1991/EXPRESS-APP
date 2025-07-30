@@ -81,7 +81,7 @@ async function UpdateCustomerWalletId(
    WHERE customer_id = ? 
      AND description LIKE 'Opening balance%' 
      AND type = 'Earn'`,
-    [customer.id]
+    [customer_id]
   );
   if (rows.length === 0) {
     // 2. Insert only if not found
