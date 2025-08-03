@@ -171,7 +171,6 @@ async function AwardPointsForOrder(order, isReturn = false) {
     );
 
     if (existing.length === 0 && !isReturn) {
-      console.log("insert statement for transaction");
       // ✅ First time awarding points for this order
       await connection.query(
         `INSERT INTO loyaltytransactions 

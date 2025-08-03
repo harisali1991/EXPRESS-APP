@@ -83,7 +83,6 @@ async function UpdateCustomerWalletId(
      AND type = 'Earn'`,
     [customer_id]
   );
-  console.log("row length: ", rows.length);
   if (rows.length === 0) {
     // 2. Insert only if not found
     await connection.query(
@@ -227,13 +226,6 @@ async function UpdateCustomer(
         ]
       );
     }
-    // const [updateCustomer] = await connection.query(
-    //   `SELECT id, loyalty_balance FROM customers WHERE id = ?`,
-    //   [customer.id]
-    // );
-    // console.log("return loyalty balance: ", updateCustomer[0].loyalty_balance);
-
-    // return updateCustomer[0].loyalty_balance;
   } catch (err) {
     console.log("Error in UpsertCustomer", err.message);
   }

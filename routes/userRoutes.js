@@ -46,6 +46,8 @@ router.post("/order/callback", async (req, res) => {
   const response = await order_service.upsertOrders(body);
 
   if (response.inserted > 0) {
+    
+    //await passkit_service.UpdateMemberByExternalID(membership, loyaltyBalance);
     await passkit_service.UpdateMemberByExternalID(membership, loyaltyBalance);
     await customer_service.UpdateCustomer(
       order.customer,
@@ -113,7 +115,6 @@ router.post("/adapter/v1/redeem", async (req, res) => {
     "Bearer lHJ9VTXKc48flDAvcm+gGHi37mIPzZGcEDwJ2OPtcacYyaUDsZu+Or7UQJr8QRe+AKzrZc6EZjR+bg4YK8Fq7g=="
   ) {
     if (req.body.reward_code) {
-      // console.log(`inside if check with reward code ${body.reward_code}`);
       try {
         const passKitResponse =
           await passkit_service.GetMemberByExternalIDForRedeem(body);
@@ -123,14 +124,12 @@ router.post("/adapter/v1/redeem", async (req, res) => {
         if (!passKitResponse) {
           return res.status(404).json({ message: "wallet not exist" });
         }
-        console.log("reward code : ", body.reward_code);
 
         const customer = await customer_service.GetByCustomerPhone(
           body.customer_mobile_number,
           passKitResponse.discount_amount,
           body
         );
-        console.log("customer respose: ", customer);
 
         const reward_code = await customer_service.RedeemPointsForCustomer(
           customer.id,
@@ -138,17 +137,15 @@ router.post("/adapter/v1/redeem", async (req, res) => {
           customer.loyalty_balance,
           body.discount_amount
         );
-        const newBalance =
-          passKitResponse.discount_amount - body.discount_amount;
-        // console.log("NEW BALANCE: ", newBalance);
-        const setPoint = {
-          externalId: passKitResponse.externalId,
-          points: newBalance || 0,
-          programId: passKitResponse.programId,
-          resetPoints: newBalance == 0 ? true : false,
-        };
-        console.log("set point request:", setPoint);
-        await passkit_service.SetPoints(setPoint);
+        if (body.discount_amount > 0) {
+          const setPoint = {
+            externalId: passKitResponse.externalId,
+            points: body.discount_amount,
+            programId: passKitResponse.programId,
+          };
+          await passkit_service.BurnPoints(setPoint);
+        }
+        //await passkit_service.SetPoints(setPoint);
         res.status(200).json(customer);
       } catch (error) {
         // res.write(JSON.stringify({ error }));

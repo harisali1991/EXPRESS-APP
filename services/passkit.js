@@ -6,7 +6,7 @@ const access_token =
   "pX1ZcU4hRRoSvgKzXHdTKN8GGrmBW9IbDeOK2SncJNOmzKF8IEsbjT2ukrgBIvzDXIQb7Pe3389ySkd8DjgGJjGkEeHfyZl8q1euVVvf5J7XoB3p-i_e812iKdYNEe3jjTftVePEnmphXx8TSstoeB96Qj48YPWqg5IDI9iy6smjeso8dRfS5maRP8xJ8b6gJFKTRQWzrw1tCijj5d9PfJpBXaPgaxN5qGyl1smGqSXjBGA-Om5IrlTWxPzt78ywbf6p2Tsdes2NmXSS5sEC67wozjAmewXBG8FXQr5t3ULpJ5FAsjHAJ3wEpBVzdm6w";
 const programId = "3jjEmzl4YLE3019VgKRyGZ";
 
-async function CreateWallet(paramCustomer) {
+async function CreateWallet(paramCustomer) {  
   // check if wallet already exist or not
   const member = await CheckMemberByExternalID(paramCustomer.membership);
   if(member){
@@ -33,7 +33,7 @@ async function CreateWallet(paramCustomer) {
     status: "ENROLLED",
     operation: "OPERATION_DO_NOT_USE",
   };
-  console.log("wallet create request data", data);
+  // console.log("wallet create request data", data);
   let config = {
     method: "POST",
     url: `${baseUrl}members/member`,
@@ -88,7 +88,7 @@ async function CheckMemberByExternalID(membership) {
       is_discount_taxable: false,
     };
   } catch (error) {
-    // console.error('Error fetching member by external ID:', error.message);
+    console.error('Error fetching member by external ID:', error.message);
     return null;
   }
 }
@@ -117,6 +117,23 @@ async function GetMemberByExternalID(rewardObj) {
     console.error("GetMemberByExternalID: Error fetching member by external ID:", rewardObj.reward_code);
     // throw error;
     return null;
+  }
+}
+async function EarnPintsByExternalID(externalId, balance) {
+  try {
+    const newTierBalance = parseInt(balance)
+    const earnPoint = {
+      externalId: externalId,
+      programId: programId,
+      points: balance || 0,
+      tierPoints: newTierBalance,
+    };
+    console.log("Points earn: " + balance);
+    
+    await EarnPoints(earnPoint);
+  } catch (error) {
+    console.error("Error fetching member by external ID:", error);
+    throw error;
   }
 }
 async function UpdateMemberByExternalID(externalId, balance) {
@@ -208,6 +225,30 @@ async function SetPoints(pointsObj) {
     throw error;
   }
 }
+async function EarnPoints(pointsObj) {
+  const url = `${baseUrl}members/member/points/earn`;
+  try {
+    const response = await axios.put(url, pointsObj, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    console.log("wallet update successful:", response.data);
+  } catch (error) {
+    console.error("wallet update error:", error);
+    throw error;
+  }
+}
+async function BurnPoints(pointsObj) {
+  const url = `${baseUrl}members/member/points/burn`;
+  try {
+    const response = await axios.put(url, pointsObj, {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    console.log("wallet redeem successful:", response.data);
+  } catch (error) {
+    console.error("wallet redeem error:", error);
+    throw error;
+  }
+}
 module.exports = {
   CreateWallet,
   GetMemberByExternalID,
@@ -215,5 +256,8 @@ module.exports = {
   UpdateMemberByExternalID,
   RevertUpdateMemberByExternalID,
   SetPoints,
+  EarnPoints,
+  BurnPoints,
+  EarnPintsByExternalID,
   CheckMemberByExternalID,
 };
