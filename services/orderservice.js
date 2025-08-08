@@ -85,13 +85,13 @@ async function upsertOrders(body) {
 
     // Always check if order exists
     const [orderExist] = await connection.query(
-      `SELECT * FROM orders WHERE id = ?`,
+      `SELECT * FROM tblOrders WHERE id = ?`,
       [order.id]
     );
 
     // If exists, update it
     if (orderExist.length > 0) {
-      await connection.query(`UPDATE orders SET status = ? WHERE id = ?`, [
+      await connection.query(`UPDATE tblOrders SET status = ? WHERE id = ?`, [
         order.status,
         order.id,
       ]);
@@ -115,7 +115,7 @@ async function upsertOrders(body) {
 
     // Insert if not exists
     await connection.query(
-      `INSERT INTO orders (
+      `INSERT INTO tblOrders (
         id, branch_id, branch_name, customer_id, customer_name,
         discount_type, reference_x, number, type, source, status,
         delivery_status, kitchen_notes, business_date, subtotal_price,
@@ -166,14 +166,14 @@ async function AwardPointsForOrder(order, isReturn = false) {
 
     // Check if a loyalty transaction for this order already exists
     const [existing] = await connection.query(
-      `SELECT * FROM loyaltytransactions WHERE order_id = ? AND type = 'Earn'`,
+      `SELECT * FROM tblLoyaltyTransactions WHERE order_id = ? AND type = 'Earn'`,
       [order.id]
     );
 
     if (existing.length === 0 && !isReturn) {
       // ✅ First time awarding points for this order
       await connection.query(
-        `INSERT INTO loyaltytransactions 
+        `INSERT INTO tblLoyaltyTransactions 
            (created_at, customer_id, description, expire_at, order_id, points, status, type, expired) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -191,7 +191,7 @@ async function AwardPointsForOrder(order, isReturn = false) {
     } else if (existing.length > 0 && isReturn) {
       // ❌ Order is being returned, reverse points
       await connection.query(
-        `INSERT INTO loyaltytransactions 
+        `INSERT INTO tblLoyaltyTransactions 
            (created_at, customer_id, description, expire_at, order_id, points, status, type, expired) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -209,7 +209,7 @@ async function AwardPointsForOrder(order, isReturn = false) {
 
       // Optionally, mark original Earn as expired or reversed
       await connection.query(
-        `UPDATE loyaltytransactions SET status = 'Reversed', expired = true WHERE order_id = ? AND type = 'Earn'`,
+        `UPDATE tblLoyaltyTransactions SET status = 'Reversed', expired = true WHERE order_id = ? AND type = 'Earn'`,
         [order.id]
       );
     }

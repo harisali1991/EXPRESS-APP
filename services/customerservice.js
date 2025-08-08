@@ -7,7 +7,7 @@ async function GetByCustomer(customer_mobile_number) {
   if (!customer_mobile_number) {
     throw new Error("Customer mobile number is required");
   }
-  const query = "SELECT * FROM customers WHERE phone = ?";
+  const query = "SELECT * FROM tblCustomers WHERE phone = ?";
   const [rows] = await connection.query(query, [customer_mobile_number]);
   if (rows.length === 0) {
     return null;
@@ -15,10 +15,11 @@ async function GetByCustomer(customer_mobile_number) {
   return rows[0];
 }
 async function GetCustomerByMembership(member) {
+  console.log("GetCustomerByMembership called with member:", member);
   if (!member) {
     throw new Error("Customer mobile number is required");
   }
-  const query = "SELECT * FROM customers WHERE membership = ?";
+  const query = "SELECT * FROM tblCustomers WHERE membership = ?";
   const [rows] = await connection.query(query, [member]);
   if (rows.length === 0) {
     return null;
@@ -34,7 +35,7 @@ async function GetByCustomerPhone(
   if (!customer_mobile_number) {
     throw new Error("Customer mobile number is required");
   }
-  const query = "SELECT * FROM customers WHERE phone = ?";
+  const query = "SELECT * FROM tblCustomers WHERE phone = ?";
   const [rows] = await connection.query(query, [customer_mobile_number]);
   if (rows.length === 0) {
     console.log("customer not exist is db");
@@ -56,7 +57,7 @@ async function GetByCustomerPhone(
         member.tier_id
       );
     }
-    const selectQuery = "SELECT * FROM customers WHERE phone = ?";
+    const selectQuery = "SELECT * FROM tblCustomers WHERE phone = ?";
     const [customerRows] = await connection.query(selectQuery, [
       customer_mobile_number,
     ]);
@@ -70,14 +71,14 @@ async function UpdateCustomerWalletId(
   balance,
   tier_id
 ) {
-  await connection.query(`UPDATE customers SET wallet_id = ? WHERE id = ?`, [
+  await connection.query(`UPDATE tblCustomers SET wallet_id = ? WHERE id = ?`, [
     wallet_id,
     customer_id,
   ]);
   const now = getFormattedDateTime();
   // 1. Check if opening transaction already exists
   const [rows] = await connection.query(
-    `SELECT customer_id FROM loyaltytransactions 
+    `SELECT customer_id FROM tblLoyaltyTransactions 
    WHERE customer_id = ? 
      AND description LIKE 'Opening balance%' 
      AND type = 'Earn'`,
@@ -86,7 +87,7 @@ async function UpdateCustomerWalletId(
   if (rows.length === 0) {
     // 2. Insert only if not found
     await connection.query(
-      `INSERT INTO loyaltytransactions 
+      `INSERT INTO tblLoyaltyTransactions 
          (customer_id, points, type, status, description, created_at, expire_at, expired) 
        VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
       [
@@ -120,13 +121,13 @@ async function UpdateCustomerOpening(
   try {
     // Step 1: Check if customer exists
     const [rows] = await connection.query(
-      `SELECT id FROM customers WHERE id = ?`,
+      `SELECT id FROM tblCustomers WHERE id = ?`,
       [customer.id]
     );
     if (rows.length > 0) {
       // Step 2a: Customer exists — update balance
       await connection.query(
-        `UPDATE customers SET loyalty_balance = loyalty_balance + ?, tier_id = ? WHERE id = ?`,
+        `UPDATE tblCustomers SET loyalty_balance = loyalty_balance + ?, tier_id = ? WHERE id = ?`,
         [incrementAmount, tier_id, customer.id]
       );
     } else {
@@ -137,7 +138,7 @@ async function UpdateCustomerOpening(
       console.log("updating balance", loyalty_balance);
       // Step 2b: Customer does not exist — insert new row
       await connection.query(
-        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tblCustomers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           customer.id,
           membership,
@@ -150,20 +151,6 @@ async function UpdateCustomerOpening(
         ]
       );
 
-      // const now = getFormattedDateTime();
-      // await connection.query(
-      //   `INSERT INTO loyaltytransactions
-      //    (customer_id, points, type, status, description, created_at, expire_at, expired)
-      //  VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
-      //   [
-      //     customer.id,
-      //     loyalty_balance,
-      //     `Opening balance ${loyalty_balance} points on ${now}`,
-      //     now,
-      //     getExpiryFormattedDateTime(),
-      //     false,
-      //   ]
-      // );
     }
   } catch (err) {
     console.log("Error in UpsertCustomer", err.message);
@@ -181,13 +168,13 @@ async function UpdateCustomer(
   try {
     // Step 1: Check if customer exists
     const [rows] = await connection.query(
-      `SELECT id FROM customers WHERE id = ?`,
+      `SELECT id FROM tblCustomers WHERE id = ?`,
       [customer.id]
     );
     if (rows.length > 0) {
       // Step 2a: Customer exists — update balance
       await connection.query(
-        `UPDATE customers SET loyalty_balance = loyalty_balance + ?, tier_id = ? WHERE id = ?`,
+        `UPDATE tblCustomers SET loyalty_balance = loyalty_balance + ?, tier_id = ? WHERE id = ?`,
         [incrementAmount, tier_id, customer.id]
       );
     } else {
@@ -198,7 +185,7 @@ async function UpdateCustomer(
       // console.log("upadating balance", passkit_balance);
       // Step 2b: Customer does not exist — insert new row
       await connection.query(
-        `INSERT INTO customers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO tblCustomers (id, membership, name, phone, email, loyalty_balance, wallet_id, tier_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           customer.id,
           membership,
@@ -213,7 +200,7 @@ async function UpdateCustomer(
 
       const now = getFormattedDateTime();
       await connection.query(
-        `INSERT INTO loyaltytransactions 
+        `INSERT INTO tblLoyaltyTransactions 
          (customer_id, points, type, status, description, created_at, expire_at, expired) 
        VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
         [
@@ -236,7 +223,7 @@ async function RevertCustomerLoyaltyBalance(customer, loyalty_balance) {
   try {
     // Step 1: Ensure customer exists
     const [rows] = await connection.query(
-      `SELECT id, loyalty_balance FROM customers WHERE id = ?`,
+      `SELECT id, loyalty_balance FROM tblCustomers WHERE id = ?`,
       [customer.id]
     );
 
@@ -250,7 +237,7 @@ async function RevertCustomerLoyaltyBalance(customer, loyalty_balance) {
 
     // Step 2: Update with the reverted balance
     await connection.query(
-      `UPDATE customers SET loyalty_balance = ? WHERE id = ?`,
+      `UPDATE tblCustomers SET loyalty_balance = ? WHERE id = ?`,
       [newBalance, customer.id]
     );
 
@@ -274,7 +261,7 @@ async function RedeemPointsForCustomer(
     const now = getFormattedDateTime();
     // Step 1: Get available earned points
     const [earnedPoints] = await connection.query(
-      `SELECT * FROM loyaltytransactions 
+      `SELECT * FROM tblLoyaltyTransactions 
        WHERE customer_id = ? 
          AND type = 'Earn' 
          AND (status = 'Unused' OR status = 'Partial') 
@@ -288,19 +275,24 @@ async function RedeemPointsForCustomer(
     let remaining = pointsToRedeem;
     let totalRedeemed = 0;
 
-    for (const point of earnedPoints) {
+    for (const point of earnedPoints) {  
       // console.log("inside loop");
 
       const available = point.points - (point.redeem_amount || 0);
       if (available <= 0) continue;
 
       const toRedeem = Math.min(available, remaining);
-      const newRedeemAmount = (point.redeem_amount || 0) + toRedeem;
-      const newStatus = newRedeemAmount === point.points ? "Used" : "Partial";
+      const newRedeemAmount = Number(point.redeem_amount || 0) + toRedeem;
+      const precision = 3;
+      const pointPointsNum = Number(point.points || 0);
+      console.log("newRedeemAmount:", Number(newRedeemAmount.toFixed(precision)), ": -> point.points:", Number(pointPointsNum.toFixed(precision)));
+      const isUsed = Number(newRedeemAmount.toFixed(precision)) === Number(pointPointsNum.toFixed(precision));
+      const newStatus = isUsed ? "Used" : "Partial";
+      //const newStatus = newRedeemAmount === point.points ? "Used" : "Partial";
 
       // Update the original Earn record
       await connection.query(
-        `UPDATE loyaltytransactions SET redeem_amount = ?, status = ? WHERE tid = ?`,
+        `UPDATE tblLoyaltyTransactions SET redeem_amount = ?, status = ? WHERE tid = ?`,
         [newRedeemAmount, newStatus, point.tid]
       );
 
@@ -316,7 +308,7 @@ async function RedeemPointsForCustomer(
 
     // Step 2: Record the redemption
     await connection.query(
-      `INSERT INTO loyaltytransactions 
+      `INSERT INTO tblLoyaltyTransactions 
          (customer_id, order_id, points, type, status, description, created_at) 
        VALUES (?, ?, ?, 'Redeem', 'Used', ?, ?)`,
       [
@@ -331,7 +323,7 @@ async function RedeemPointsForCustomer(
     // Step 3: Update customer balance
     const newBalance = current_balance - pointsToRedeem;
     await connection.query(
-      `UPDATE customers SET loyalty_balance = ? WHERE id = ?`,
+      `UPDATE tblCustomers SET loyalty_balance = ? WHERE id = ?`,
       [newBalance, customer_id]
     );
 
@@ -344,7 +336,7 @@ async function RedeemPointsForCustomer(
 async function AddOpeningTransaction(customer) {
   const now = getFormattedDateTime();
   await connection.query(
-    `INSERT INTO loyaltytransactions 
+    `INSERT INTO tblLoyaltyTransactions 
          (customer_id, points, type, status, description, created_at, expire_at, expired) 
        VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
     [
@@ -360,7 +352,7 @@ async function AddOpeningTransaction(customer) {
 async function AddOpeningTransactionV2(customer, member) {
   const now = getFormattedDateTime();
   await connection.query(
-    `INSERT INTO loyaltytransactions 
+    `INSERT INTO tblLoyaltyTransactions 
          (customer_id, points, type, status, description, created_at, expire_at, expired) 
        VALUES (?, ?, 'Earn', 'Unused', ?, ?, ?, ?)`,
     [

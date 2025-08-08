@@ -7,6 +7,7 @@ const access_token =
 const programId = "3jjEmzl4YLE3019VgKRyGZ";
 
 async function CreateWallet(paramCustomer) {  
+  console.log("CreateWallet called with paramCustomer:", paramCustomer.membership);
   // check if wallet already exist or not
   const member = await CheckMemberByExternalID(paramCustomer.membership);
   if(member){
@@ -88,7 +89,7 @@ async function CheckMemberByExternalID(membership) {
       is_discount_taxable: false,
     };
   } catch (error) {
-    console.error('Error fetching member by external ID:', error.message);
+    console.error('CheckMemberByExternalID Error fetching member by external ID:',externalId + " - " + error);
     return null;
   }
 }
@@ -132,7 +133,7 @@ async function EarnPintsByExternalID(externalId, balance) {
     
     await EarnPoints(earnPoint);
   } catch (error) {
-    console.error("Error fetching member by external ID:", error);
+    console.error("EarnPintsByExternalID Error fetching member by external ID,:",externalId + " - " + error);
     throw error;
   }
 }
@@ -154,7 +155,7 @@ async function UpdateMemberByExternalID(externalId, balance) {
     };
     await SetPoints(setPoint);
   } catch (error) {
-    console.error("Error fetching member by external ID:", error);
+    console.error("UpdateMemberByExternalID Error fetching member by external ID:",externalId + " - " + error);
     throw error;
   }
 }
@@ -219,7 +220,7 @@ async function SetPoints(pointsObj) {
     const response = await axios.put(url, pointsObj, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
-    console.log("wallet update successful:", response.data);
+    console.log("SetPoints wallet update successful:", response.data);
   } catch (error) {
     console.error("wallet update error:", error);
     throw error;
@@ -231,7 +232,7 @@ async function EarnPoints(pointsObj) {
     const response = await axios.put(url, pointsObj, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
-    console.log("wallet update successful:", response.data);
+    console.log("EarnPoints wallet update successful:", response.data);
   } catch (error) {
     console.error("wallet update error:", error);
     throw error;
@@ -243,7 +244,7 @@ async function BurnPoints(pointsObj) {
     const response = await axios.put(url, pointsObj, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
-    console.log("wallet redeem successful:", response.data);
+    console.log("BurnPoints wallet redeem successful:", response.data);
   } catch (error) {
     console.error("wallet redeem error:", error);
     throw error;

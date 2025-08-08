@@ -169,7 +169,7 @@ router.post("/adapter/v1/signup", async (req, res) => {
   );
   const setPoint = {
     externalId: body.pass.externalId,
-    points: customer.loyalty_balance || 0,
+    points: customer.loyalty_balance ?? 0,
     programId: body.pass.classId,
     resetPoints: customer.loyalty_balance == 0 ? true : false,
   };
